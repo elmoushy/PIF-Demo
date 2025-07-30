@@ -1,0 +1,102 @@
+/* GradientBlob.module.css */
+
+.gradientBlob {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.swirlSvg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  opacity: 0.4;
+  animation: swirlFloat 8s ease-in-out infinite;
+}
+
+[data-theme="light"] .swirlSvg {
+  opacity: 0.2;
+}
+
+.swirlPath {
+  animation: swirlScale 6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.swirlPath2 {
+  animation: swirlScale 6s ease-in-out infinite reverse;
+  transform-origin: center;
+}
+
+@keyframes swirlFloat {
+  0%, 100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    filter: blur(8px);
+  }
+  50% {
+    transform: translate(-48%, -52%) rotate(2deg) scale(1.05);
+    filter: blur(12px);
+  }
+}
+
+@keyframes swirlScale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .swirlSvg {
+    animation: none;
+  }
+  
+  .swirlPath,
+  .swirlPath2 {
+    animation: none;
+  }
+}
+
+/* Desktop breakpoints */
+@media (max-width: 1599px) and (min-width: 1366px) {
+  .swirlSvg {
+    width: 100%;
+    height: 100%;
+    opacity: 0.35;
+  }
+  
+  [data-theme="light"] .swirlSvg {
+    opacity: 0.18;
+  }
+}
+
+/* Tablet - hide swirl */
+@media (min-width: 600px) and (max-width: 1024px) {
+  .gradientBlob {
+    display: none;
+  }
+}
+
+/* Mobile - hide swirl */
+@media (max-width: 428px) {
+  .gradientBlob {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .gradientBlob {
+    display: none;
+  }
+}

@@ -1,0 +1,460 @@
+/* Glass Morphism Quarter Copy Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modalContainer {
+  position: relative;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  border-radius: 20px;
+  animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(0, 181, 141, 0.6) 50%, 
+    transparent 100%);
+}
+
+/* Header */
+.modalHeader {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid rgba(0, 181, 141, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, 
+    rgba(0, 181, 141, 0.05) 0%, 
+    rgba(0, 181, 141, 0.02) 100%);
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #4a5568 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.closeButton {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.95);
+  color: #e53e3e;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.closeIcon {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Content */
+.modalContent {
+  padding: 24px 28px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modalDescription {
+  color: #666;
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Section Labels */
+.sectionLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Year Section */
+.yearSection {
+  margin-bottom: 28px;
+}
+
+.yearSelector {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.yearButton {
+  position: relative;
+  padding: 12px 20px;
+  border: 2px solid rgba(0, 181, 141, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  color: #4a5568;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  min-width: 80px;
+  text-align: center;
+}
+
+.yearButton:hover {
+  border-color: rgba(0, 181, 141, 0.4);
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 181, 141, 0.15);
+}
+
+.yearButton.active {
+  border-color: #00b58d;
+  background: linear-gradient(135deg, #00b58d 0%, #00a085 100%);
+  color: white;
+  box-shadow: 
+    0 8px 20px rgba(0, 181, 141, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.activeGlow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* Quarter Section */
+.quarterSection {
+  margin-bottom: 24px;
+}
+
+.quarterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.quarterCard {
+  position: relative;
+  padding: 20px 16px;
+  border: 2px solid rgba(0, 181, 141, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  text-align: center;
+}
+
+.quarterCard:hover:not(.disabled) {
+  border-color: rgba(0, 181, 141, 0.4);
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 181, 141, 0.15);
+}
+
+.quarterCard.active {
+  border-color: #00b58d;
+  background: linear-gradient(135deg, #00b58d 0%, #00a085 100%);
+  color: white;
+  box-shadow: 
+    0 12px 24px rgba(0, 181, 141, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.quarterCard.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(200, 200, 200, 0.5);
+  border-color: rgba(200, 200, 200, 0.3);
+}
+
+.quarterContent {
+  position: relative;
+  z-index: 1;
+}
+
+.quarterLabel {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.quarterPeriod {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+
+.recordCount {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  display: inline-block;
+}
+
+.quarterCard.active .recordCount {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.quarterGlow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+/* Selected Period Display */
+.selectedPeriod {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.periodBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #00b58d 0%, #00a085 100%);
+  color: white;
+  border-radius: 16px;
+  font-weight: 600;
+  box-shadow: 
+    0 8px 20px rgba(0, 181, 141, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.badgeIcon {
+  font-size: 16px;
+}
+
+.badgeText {
+  font-size: 15px;
+}
+
+.recordBadge {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+/* Footer */
+.modalFooter {
+  padding: 20px 28px 24px;
+  border-top: 1px solid rgba(0, 181, 141, 0.1);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: linear-gradient(135deg, 
+    rgba(0, 181, 141, 0.02) 0%, 
+    rgba(0, 181, 141, 0.05) 100%);
+}
+
+.cancelButton,
+.copyButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.cancelButton {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  color: #666;
+  border: 2px solid rgba(200, 200, 200, 0.3);
+}
+
+.cancelButton:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(200, 200, 200, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.copyButton {
+  background: linear-gradient(135deg, #00b58d 0%, #00a085 100%);
+  color: white;
+  border: 2px solid #00b58d;
+  box-shadow: 
+    0 6px 16px rgba(0, 181, 141, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.copyButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(0, 181, 141, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.copyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.buttonIcon {
+  font-size: 14px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes glow {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+
+/* Scrollbar Styling */
+.modalContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modalContent::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.modalContent::-webkit-scrollbar-thumb {
+  background: rgba(0, 181, 141, 0.3);
+  border-radius: 3px;
+}
+
+.modalContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 181, 141, 0.5);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .modal {
+    background: rgba(26, 32, 44, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .modalTitle {
+    color: #f7fafc;
+    background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .modalDescription,
+  .sectionLabel {
+    color: #cbd5e0;
+  }
+  
+  .yearButton,
+  .quarterCard {
+    background: rgba(45, 55, 72, 0.8);
+    border-color: rgba(0, 181, 141, 0.3);
+    color: #e2e8f0;
+  }
+  
+  .yearButton:hover,
+  .quarterCard:hover:not(.disabled) {
+    background: rgba(45, 55, 72, 0.95);
+  }
+  
+  .cancelButton {
+    background: rgba(45, 55, 72, 0.8);
+    color: #cbd5e0;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}

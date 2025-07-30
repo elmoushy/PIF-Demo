@@ -1,0 +1,98 @@
+[
+  {
+    "value": "SAR",
+    "label": "SAR - Saudi Riyal"
+  },
+  {
+    "value": "AED",
+    "label": "AED - UAE Dirham"
+  },
+  {
+    "value": "EGP",
+    "label": "EGP - Egyptian Pound"
+  },
+  {
+    "value": "JOD",
+    "label": "JOD - Jordanian Dinar"
+  },
+  {
+    "value": "LBP",
+    "label": "LBP - Lebanese Pound"
+  },
+  {
+    "value": "SYP",
+    "label": "SYP - Syrian Pound"
+  },
+  {
+    "value": "IQD",
+    "label": "IQD - Iraqi Dinar"
+  },
+  {
+    "value": "YER",
+    "label": "YER - Yemeni Rial"
+  },
+  {
+    "value": "OMR",
+    "label": "OMR - Omani Rial"
+  },
+  {
+    "value": "QAR",
+    "label": "QAR - Qatari Riyal"
+  },
+  {
+    "value": "BHD",
+    "label": "BHD - Bahraini Dinar"
+  },
+  {
+    "value": "KWD",
+    "label": "KWD - Kuwaiti Dinar"
+  },
+  {
+    "value": "MAD",
+    "label": "MAD - Moroccan Dirham"
+  },
+  {
+    "value": "DZD",
+    "label": "DZD - Algerian Dinar"
+  },
+  {
+    "value": "TND",
+    "label": "TND - Tunisian Dinar"
+  },
+  {
+    "value": "LYD",
+    "label": "LYD - Libyan Dinar"
+  },
+  {
+    "value": "SDG",
+    "label": "SDG - Sudanese Pound"
+  },
+  {
+    "value": "SOS",
+    "label": "SOS - Somali Shilling"
+  },
+  {
+    "value": "DJF",
+    "label": "DJF - Djiboutian Franc"
+  },
+  {
+    "value": "KMF",
+    "label": "KMF - Comorian Franc"
+  },
+  {
+    "value": "MRU",
+    "label": "MRU - Mauritanian Ouguiya"
+  },
+  {
+    "value": "USD",
+    "label": "USD - US Dollar"
+  },
+  {
+    "value": "EUR",
+    "label": "EUR - Euro"
+  },
+  {
+    "value": "GBP",
+    "label": "GBP - British Pound"
+  }
+]

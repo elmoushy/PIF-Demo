@@ -1,0 +1,133 @@
+/* Analytics Page Styles */
+
+.analytics {
+  min-height: 100vh;
+  background: linear-gradient(135deg, 
+    rgba(18, 24, 29, 1) 0%, 
+    rgba(31, 38, 43, 0.95) 100%);
+  padding: 2rem 0;
+}
+
+[data-theme="light"] .analytics {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 1) 0%, 
+    rgba(248, 250, 252, 0.95) 100%);
+}
+
+[data-theme="dark"] .analytics {
+  background: linear-gradient(135deg, 
+    rgba(30, 30, 30, 1) 0%, 
+    rgba(20, 20, 20, 0.95) 100%);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  background: linear-gradient(135deg, #E8EDF2 0%, #00FFC2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .title {
+  background: linear-gradient(135deg, #0B0F10 0%, #007E31 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .title {
+  background: linear-gradient(135deg, #F4F4F4 0%, #18F2A3 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #8C949E;
+  margin: 0;
+}
+
+[data-theme="light"] .subtitle {
+  color: #4F5560;
+}
+
+[data-theme="dark"] .subtitle {
+  color: #A5A5A5;
+}
+
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.comingSoon {
+  text-align: center;
+  padding: 3rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 194, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .comingSoon {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 126, 49, 0.2);
+}
+
+[data-theme="dark"] .comingSoon {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(24, 242, 163, 0.2);
+}
+
+.icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 194, 0.3));
+}
+
+.comingSoon h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #E8EDF2;
+  margin: 0 0 1rem 0;
+}
+
+[data-theme="light"] .comingSoon h2 {
+  color: #0B0F10;
+}
+
+[data-theme="dark"] .comingSoon h2 {
+  color: #F4F4F4;
+}
+
+.comingSoon p {
+  font-size: 1.1rem;
+  color: #8C949E;
+  margin: 0;
+  line-height: 1.6;
+}
+
+[data-theme="light"] .comingSoon p {
+  color: #4F5560;
+}
+
+[data-theme="dark"] .comingSoon p {
+  color: #A5A5A5;
+}

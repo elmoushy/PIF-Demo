@@ -1,0 +1,118 @@
+/* Chart Components Styles */
+.pieChartContainer,
+.barChartContainer,
+.lineChartContainer,
+.areaChartContainer,
+.scatterChartContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pieChartContainer canvas,
+.barChartContainer canvas,
+.lineChartContainer canvas,
+.areaChartContainer canvas,
+.scatterChartContainer canvas {
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* Chart container with theme support */
+.chartContainer {
+  background: transparent;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Custom legend styles with theme support */
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Light theme text colors for legend items */
+[data-theme="light"] .legendItem {
+  color: #4F5560;
+}
+
+/* Dark theme text colors for legend items */
+[data-theme="dark"] .legendItem {
+  color: #A5A5A5;
+}
+
+/* Night theme text colors for legend items (default) */
+.legendItem,
+[data-theme="night"] .legendItem {
+  color: #8C949E;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Chart text visibility enhancements */
+[data-theme="light"] .pieChartContainer,
+[data-theme="light"] .barChartContainer,
+[data-theme="light"] .lineChartContainer,
+[data-theme="light"] .areaChartContainer,
+[data-theme="light"] .scatterChartContainer {
+  /* Ensure chart text elements are visible in light mode */
+  --chart-text-primary: #0B0F10;
+  --chart-text-secondary: #4F5560;
+  --chart-text-muted: #6B7280;
+}
+
+[data-theme="dark"] .pieChartContainer,
+[data-theme="dark"] .barChartContainer,
+[data-theme="dark"] .lineChartContainer,
+[data-theme="dark"] .areaChartContainer,
+[data-theme="dark"] .scatterChartContainer {
+  --chart-text-primary: #F4F4F4;
+  --chart-text-secondary: #A5A5A5;
+  --chart-text-muted: #8A8A8A;
+}
+
+.pieChartContainer,
+.barChartContainer,
+.lineChartContainer,
+.areaChartContainer,
+.scatterChartContainer {
+  /* Default night theme */
+  --chart-text-primary: #E8EDF2;
+  --chart-text-secondary: #B0BAC9;
+  --chart-text-muted: #8C949E;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pieChartContainer,
+  .barChartContainer,
+  .lineChartContainer,
+  .areaChartContainer,
+  .scatterChartContainer {
+    height: 250px;
+  }
+  
+  .chartLegend {
+    gap: 0.5rem;
+  }
+  
+  .legendItem {
+    font-size: 0.75rem;
+  }
+}
