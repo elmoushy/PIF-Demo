@@ -19,6 +19,8 @@
         :columns="tableColumns"
         :loading="loading"
         :currentPeriod="selectedPeriod"
+        :readOnly="isCurrentQuarterReadOnly"
+        :hasDataFromPreviousQuarter="hasDataFromPreviousQuarter"
         table-id="business-quarters-table"
         @addRow="handleAddRow"
         @saveChanges="handleSaveChanges"
@@ -32,6 +34,7 @@
         @deleteUnsavedRow="handleDeleteUnsavedRow"
         @bulkDelete="handleBulkDelete"
         @bulkDuplicate="handleBulkDuplicate"
+        @validationChange="handleValidationChange"
       />
 
       <!-- Pagination -->
@@ -50,6 +53,7 @@
       :mode="modalState.mode"
       :columns="tableColumns"
       :data="modalState.data"
+      :tableData="tableData"
       @close="closeModal"
       @submit="handleModalSubmit"
     />
@@ -70,9 +74,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-// import { useI18n } from '../../hooks/useI18n'
+import { useI18n } from '../../hooks/useI18n'
 import { dataService, type BusinessQuarterRow } from '../../services/dataService'
 import { notificationService } from '../../services/notificationService'
+import * as XLSX from 'xlsx-js-style'
 import Header from '../../components/Header/Header.vue'
 // import QuarterSelector from '../../components/QuarterSelector/QuarterSelector.vue'
 import FilterBar from '../../components/FilterBar/FilterBar.vue'
@@ -83,7 +88,7 @@ import QuarterCopyModal from '../../components/QuarterCopyModal/QuarterCopyModal
 import NotificationContainer from '../../components/NotificationContainer/NotificationContainer.vue'
 import styles from './BusinessQuarters.module.css'
 
-// const { t } = useI18n()
+const { t } = useI18n()
 
 // State
 const loading = ref(false)
@@ -93,7 +98,7 @@ const searchQuery = ref('')
 const filters = ref<Record<string, string>>({})
 const currentQuarter = ref(1)
 const currentYear = ref(new Date().getFullYear())
-const selectedPeriod = ref(`Q1 ${new Date().getFullYear()}`)
+const selectedPeriod = ref('First Half 2025')
 
 // Data state - using localStorage through dataService
 const tableData = ref<BusinessQuarterRow[]>([])
@@ -111,19 +116,250 @@ const copyModalState = ref({
   isOpen: false
 })
 
-// Table configuration
-const tableColumns = [
-  { key: 'companyName', editable: true, required: true },
-  { key: 'reportingPeriod', editable: true, required: true },
-  { key: 'currency', editable: true, required: true },
-  { key: 'relatedParties', editable: true, required: true },
-  { key: 'arabicLegalName', editable: true, required: true },
-  { key: 'relationship', editable: true, required: true },
-  { key: 'directParent', editable: true, required: true },
-  { key: 'percentOwnership', editable: true, type: 'number', required: true },
-  { key: 'countryOfIncorporation', editable: true, required: true },
-  { key: 'commercialRegistrationNumber', editable: true, required: true }
-]
+// Validation state
+const hasValidationErrors = ref(false)
+const validationErrorCount = ref(0)
+
+// User role - this would typically come from authentication service
+const currentUser = ref('PIF_SubmitIQ') // or 'regular_user'
+
+// Table configuration based on new requirements
+const tableColumns = computed(() => {
+  const columns = [
+    // 1. Asset Code - conditional visibility
+    ...(currentUser.value === 'PIF_SubmitIQ' ? [{ 
+      key: 'assetCode', 
+      editable: true, 
+      required: false,
+      type: 'text'
+    }] : []),
+    
+    // 2. Entity Name (English) - dropdown, english text only
+    { 
+      key: 'entityNameEnglish', 
+      editable: true, 
+      required: true,
+      type: 'dropdown',
+      validation: 'english'
+    },
+    
+    // 3. Entity Name (Arabic Legal Name) - dropdown, arabic text only
+    { 
+      key: 'entityNameArabic', 
+      editable: true, 
+      required: true,
+      type: 'dropdown',
+      validation: 'arabic'
+    },
+    
+    // 4. Commercial Registration (CR) Number
+    { 
+      key: 'commercialRegistrationNumber', 
+      editable: true, 
+      required: true,
+      type: 'text',
+      validation: 'conditional'
+    },
+    
+    // 5. Ministry of Interior (MOI) Number (700 Number)
+    { 
+      key: 'moiNumber', 
+      editable: true, 
+      required: false,
+      type: 'text',
+      validation: 'conditional'
+    },
+    
+    // 6. Country of Incorporation
+    { 
+      key: 'countryOfIncorporation', 
+      editable: true, 
+      required: true,
+      type: 'dropdown'
+    },
+    
+    // 7. Ownership Percentage (%)
+    { 
+      key: 'ownershipPercentage', 
+      editable: true, 
+      required: true,
+      type: 'number',
+      min: 0,
+      max: 100
+    },
+    
+    // 8. Acquisition or Disposal Date
+    { 
+      key: 'acquisitionDisposalDate', 
+      editable: true, 
+      required: false,
+      type: 'date'
+    },
+    
+    // 9. Direct Parent Entity - dropdown from existing entities
+    { 
+      key: 'directParentEntity', 
+      editable: true, 
+      required: true,
+      type: 'dropdown',
+      validation: 'entityReference'
+    },
+    
+    // 10. Ultimate Parent Entity - always "Direct to PIF"
+    { 
+      key: 'ultimateParentEntity', 
+      editable: false, 
+      required: true,
+      type: 'text',
+      defaultValue: 'Direct to PIF'
+    },
+    
+    // 11. Investment Relationship Type
+    { 
+      key: 'investmentRelationshipType', 
+      editable: true, 
+      required: true,
+      type: 'dropdown'
+    },
+    
+    // 12. Ownership Structure (Direct or Indirect)
+    { 
+      key: 'ownershipStructure', 
+      editable: true, 
+      required: true,
+      type: 'dropdown'
+    },
+    
+    // 13. Entity's Principal Activities
+    { 
+      key: 'principalActivities', 
+      editable: true, 
+      required: false,
+      type: 'textarea'
+    }
+  ]
+  
+  return columns
+})
+
+// Dropdown options (Legacy - moved to DataTable component)
+// const dropdownOptions = {
+//   // Entity names - these would typically come from a service/API
+//   entityNames: [
+//     { value: 'Saudi Aramco', label: 'Saudi Aramco' },
+//     { value: 'SABIC', label: 'SABIC' },
+//     { value: 'Al Rajhi Bank', label: 'Al Rajhi Bank' },
+//     { value: 'Saudi Telecom Company', label: 'Saudi Telecom Company' },
+//     { value: 'Ma\'aden', label: 'Ma\'aden' }
+//   ],
+//   
+//   // Arabic entity names
+//   entityNamesArabic: [
+//     { value: 'أرامكو السعودية', label: 'أرامكو السعودية' },
+//     { value: 'سابك', label: 'سابك' },
+//     { value: 'مصرف الراجحي', label: 'مصرف الراجحي' },
+//     { value: 'شركة الاتصالات السعودية', label: 'شركة الاتصالات السعودية' },
+//     { value: 'معادن', label: 'معادن' }
+//   ],
+//   
+//   // Investment relationship types
+//   investmentRelationshipTypes: [
+//     { value: 'Subsidiary', label: 'Subsidiary' },
+//     { value: 'Joint venture', label: 'Joint venture' },
+//     { value: 'Associate', label: 'Associate' },
+//     { value: 'Subsidiary of Associate', label: 'Subsidiary of Associate' },
+//     { value: 'Joint Venture of Associate', label: 'Joint Venture of Associate' },
+//     { value: 'Associate of Associate', label: 'Associate of Associate' },
+//     { value: 'Subsidiary of a JV', label: 'Subsidiary of a JV' },
+//     { value: 'Associate of a JV', label: 'Associate of a JV' },
+//     { value: 'Joint Venture of a JV', label: 'Joint Venture of a JV' }
+//   ],
+//   
+//   // Ownership structure options
+//   ownershipStructure: [
+//     { value: 'Direct and In-Direct', label: 'Direct and In-Direct' },
+//     { value: 'Direct to PIF', label: 'Direct to PIF' }
+//   ]
+// }
+
+// Validation functions (Legacy - moved to DataTable component)
+// const validateField = (field: string, value: any, rowData: any) => {
+//   const errors: string[] = []
+//   
+//   switch (field) {
+//     case 'entityNameEnglish':
+//       if (value && !/^[a-zA-Z0-9\s&.'()-]+$/.test(value)) {
+//         errors.push('Entity name must contain only English characters, numbers, and common symbols')
+//       }
+//       break
+//       
+//     case 'entityNameArabic':
+//       if (value && !/^[\u0600-\u06FF\s\u0660-\u0669.-]+$/.test(value)) {
+//         errors.push('Arabic legal name must contain only Arabic characters and numbers')
+//       }
+//       break
+//       
+//     case 'commercialRegistrationNumber':
+//       if (rowData.countryOfIncorporation === 'SAU') {
+//         if (value && !/^\d+$/.test(value)) {
+//           errors.push('CR number must be numbers only for Saudi entities')
+//         }
+//       }
+//       break
+//       
+//     case 'moiNumber':
+//       // MOI Number is only required for Saudi entities
+//       if (rowData.countryOfIncorporation === 'SAU') {
+//         if (!value || value.trim() === '') {
+//           errors.push('MOI number is required for Saudi entities')
+//         } else if (!/^\d+$/.test(value)) {
+//           errors.push('MOI number must be numbers only for Saudi entities')
+//         }
+//       }
+//       break
+//       
+//     case 'ownershipPercentage':
+//       const percentage = parseFloat(value)
+//       if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+//         errors.push('Ownership percentage must be between 0 and 100')
+//       }
+//       break
+//       
+//     case 'directParentEntity':
+//       // Validate that direct parent exists in other rows
+//       if (value) {
+//         const existsInData = tableData.value.some(row => 
+//           row.entityNameEnglish === value && row.id !== rowData.id
+//         )
+//         if (!existsInData) {
+//           errors.push('Direct parent entity must exist as an Entity Name in another row')
+//         }
+//       }
+//       break
+//   }
+//   
+//   return errors
+// }
+
+// Helper function to check if MOI field is required based on country (Legacy - moved to DataTable component)
+// const isMoiRequired = (countryOfIncorporation: string) => {
+//   return countryOfIncorporation === 'SAU'
+// }
+
+// Get available direct parent options (from existing entity names) (Legacy - moved to DataTable component)
+// const getDirectParentOptions = computed(() => {
+//   const entityNames = tableData.value
+//     .map(row => row.entityNameEnglish)
+//     .filter(name => name && name.trim())
+//     .map(name => ({ value: name, label: name }))
+//   
+//   // Remove duplicates
+//   const uniqueNames = entityNames.filter((item, index, arr) => 
+//     arr.findIndex(i => i.value === item.value) === index
+//   )
+//   
+//   return uniqueNames
+// })
 
 // Computed properties
 const filteredData = computed(() => {
@@ -134,14 +370,13 @@ const filteredData = computed(() => {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(row => {
       const searchableFields = [
-        row.companyName,
-        row.currency,
-        row.relatedParties,
-        row.arabicLegalName,
-        row.relationship,
-        row.directParent,
-        row.countryOfIncorporation,
-        row.commercialRegistrationNumber
+        row.entityNameEnglish,
+        row.entityNameArabic,
+        row.commercialRegistrationNumber,
+        row.directParentEntity,
+        row.investmentRelationshipType,
+        row.principalActivities,
+        row.countryOfIncorporation
       ]
       
       return searchableFields.some(value => 
@@ -154,25 +389,15 @@ const filteredData = computed(() => {
   Object.entries(filters.value).forEach(([filterType, filterValue]) => {
     if (filterValue) {
       switch (filterType) {
-        case 'currency':
-          filtered = filtered.filter(row => 
-            row.currency.toLowerCase().includes(filterValue.toLowerCase())
-          )
-          break
         case 'country':
         case 'countryOfIncorporation':
           filtered = filtered.filter(row => 
             row.countryOfIncorporation.toLowerCase().includes(filterValue.toLowerCase())
           )
           break
-        case 'relationship':
+        case 'investmentRelationshipType':
           filtered = filtered.filter(row => 
-            row.relationship.toLowerCase().includes(filterValue.toLowerCase())
-          )
-          break
-        case 'relatedParties':
-          filtered = filtered.filter(row => 
-            row.relatedParties.toLowerCase().includes(filterValue.toLowerCase())
+            row.investmentRelationshipType.toLowerCase().includes(filterValue.toLowerCase())
           )
           break
         default:
@@ -191,6 +416,15 @@ const paginatedData = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return filteredData.value.slice(start, end)
+})
+
+// Quarter progression computed properties
+const isCurrentQuarterReadOnly = computed(() => {
+  return dataService.isQuarterReadOnly(selectedPeriod.value)
+})
+
+const hasDataFromPreviousQuarter = computed(() => {
+  return tableData.value.some(row => row.isFromPreviousQuarter)
 })
 
 // Event handlers
@@ -213,7 +447,20 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
   
   // Load data for the new period from localStorage
   try {
-    const periodData = dataService.loadPeriodData(period)
+    let periodData = dataService.loadPeriodData(period)
+    
+    // If no data exists for current period, load from previous quarter
+    if (periodData.length === 0) {
+      const previousQuarterData = dataService.loadPreviousQuarterData(period)
+      if (previousQuarterData.length > 0) {
+        periodData = previousQuarterData
+        notificationService.info(
+          'Previous Quarter Data Loaded', 
+          `Data from previous quarter has been loaded for viewing. Click Save to finalize changes for ${period}.`
+        )
+      }
+    }
+    
     tableData.value = periodData.map(row => ({
       ...row,
       isModified: false // Reset modified state when loading from storage
@@ -247,18 +494,29 @@ const handleClearFilters = () => {
 }
 
 const handleAddRow = () => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Add Row', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+  
   try {
     const newRow = dataService.addRow(selectedPeriod.value, {
-      companyName: '',
-      reportingPeriod: selectedPeriod.value,
-      currency: 'SAR',
-      relatedParties: '',
-      arabicLegalName: '',
-      relationship: '',
-      directParent: '',
-      percentOwnership: '0',
-      countryOfIncorporation: 'Saudi Arabia',
+      entityNameEnglish: '',
+      entityNameArabic: '',
       commercialRegistrationNumber: '',
+      moiNumber: '',
+      countryOfIncorporation: 'SAU',
+      ownershipPercentage: 0,
+      acquisitionDisposalDate: undefined,
+      directParentEntity: '',
+      ultimateParentEntity: 'Direct to PIF',
+      investmentRelationshipType: '',
+      ownershipStructure: 'Direct to PIF',
+      principalActivities: '',
       isModified: true,
       isNewRow: true
     })
@@ -271,6 +529,15 @@ const handleAddRow = () => {
 }
 
 const handleDeleteUnsavedRow = (rowId: string) => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Delete Row', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+  
   try {
     // For unsaved rows, just remove from local data
     const rowIndex = tableData.value.findIndex(row => row.id === rowId)
@@ -289,6 +556,15 @@ const handleDeleteUnsavedRow = (rowId: string) => {
 }
 
 const handleBulkDelete = (rowIds: string[]) => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Delete Rows', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+  
   try {
     // Only allow deletion of unsaved rows
     const unsavedRowIds = rowIds.filter(id => {
@@ -313,6 +589,15 @@ const handleBulkDelete = (rowIds: string[]) => {
 }
 
 const handleBulkDuplicate = (rowIds: string[]) => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Duplicate Rows', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+  
   try {
     const duplicatedRows = dataService.duplicateRows(selectedPeriod.value, rowIds)
     
@@ -325,22 +610,51 @@ const handleBulkDuplicate = (rowIds: string[]) => {
 }
 
 const handleSaveChanges = () => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Save', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+  
+  // Check for validation errors before saving
+  if (hasValidationErrors.value) {
+    notificationService.error(
+      'Cannot Save', 
+      `Please fix ${validationErrorCount.value} validation error(s) before saving.`
+    )
+    return
+  }
+  
+  // Check if there are any changes to save
+  const hasChanges = tableData.value.some(row => row.isModified || row.isNewRow)
+  if (!hasChanges) {
+    notificationService.warning('No Changes', 'No changes detected to save.')
+    return
+  }
+  
   loading.value = true
   
   try {
-    // Save all changes to localStorage
-    dataService.savePeriodData(selectedPeriod.value, tableData.value)
+    // Use the new saveQuarterDataFinal method to mark quarter as finalized
+    dataService.saveQuarterDataFinal(selectedPeriod.value, tableData.value)
     
     setTimeout(() => {
       // Reset modified flags and mark new rows as saved
       tableData.value.forEach(row => {
         row.isModified = false
         row.isNewRow = false // Clear the new row flag when saving
+        row.isFromPreviousQuarter = false // No longer from previous quarter
       })
       loading.value = false
       
-      // Show success message
-      notificationService.success('Changes Saved', 'All changes have been saved successfully!')
+      // Show success message with quarter finalization info
+      notificationService.success(
+        'Quarter Finalized', 
+        `${selectedPeriod.value} has been saved and finalized. Previous quarters are now locked from editing.`
+      )
     }, 1000)
   } catch (error) {
     loading.value = false
@@ -349,7 +663,630 @@ const handleSaveChanges = () => {
 }
 
 const handleGenerateReport = () => {
-  // Add report generation logic here
+  try {
+    // Use the currently selected period from the UI, not the date-based detection
+    const currentQuarter = selectedPeriod.value
+    const previousQuarter = getPreviousCustomQuarter(currentQuarter)
+    
+    console.log('=== Report Generation Debug ===')
+    console.log('Selected Quarter (UI):', currentQuarter)
+    console.log('Previous Quarter:', previousQuarter)
+    
+    // Load data for both quarters
+    const currentData = dataService.loadPeriodData(currentQuarter)
+    const previousData = previousQuarter ? dataService.loadPeriodData(previousQuarter) : []
+    
+    console.log('Current Data Length:', currentData.length)
+    console.log('Previous Data Length:', previousData.length)
+    
+    // Option 1: Always generate CSV (like before) - comment out the dialog section and uncomment this
+    // const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
+    // downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
+    // notificationService.success(
+    //   t('businessQuarters.reportGenerated'),
+    //   `Detailed comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with full analysis.`
+    // )
+    
+    // Option 2: Ask user for format choice
+    const userChoice = confirm(
+      'Quarter Comparison Report Options:\n\n' +
+      '✅ OK = Excel format with REAL yellow highlighting (xlsx-js-style)\n' +
+      '❌ Cancel = CSV format with text indicators\n\n' +
+      'Both formats include: Summary, Changes Analysis, Detailed Sections, Modified Records\n' +
+      'Excel now uses xlsx-js-style library for actual cell highlighting!'
+    )
+    
+    if (userChoice) {
+      // Generate Excel file with highlighting
+      generateExcelReport(currentData, previousData, currentQuarter, previousQuarter)
+    } else {
+      // Generate CSV report with full detailed comparison (like before)
+      const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
+      downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
+      
+      notificationService.success(
+        t('businessQuarters.reportGenerated'),
+        `Detailed CSV comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with full analysis and [CHANGED] indicators.`
+      )
+    }
+  } catch (error) {
+    console.error('Report generation failed:', error)
+    notificationService.error(
+      t('businessQuarters.reportGenerationFailed'), 
+      t('businessQuarters.reportGenerationFailedDesc')
+    )
+  }
+}
+
+// Helper function to generate Excel file with yellow highlighting
+const generateExcelReport = (
+  currentData: BusinessQuarterRow[], 
+  previousData: BusinessQuarterRow[],
+  currentQuarter: string,
+  previousQuarter: string | null
+) => {
+  try {
+    // Create a new workbook
+    const workbook = XLSX.utils.book_new()
+    
+    // Prepare data for Excel
+    const excelData = prepareExcelData(currentData, previousData, currentQuarter, previousQuarter)
+    
+    // Create worksheet from data
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData.values)
+    
+    // Apply cell styles for highlighting
+    applyExcelStyles(worksheet, excelData.styles)
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Quarter Comparison')
+    
+    // Generate file and download
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    downloadExcelFile(excelBuffer, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.xlsx`)
+    
+    notificationService.success(
+      t('businessQuarters.reportGenerated'),
+      `Excel comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with REAL yellow cell highlighting using xlsx-js-style!`
+    )
+  } catch (error) {
+    console.error('Excel generation failed:', error)
+    notificationService.error(
+      'Excel Generation Failed',
+      'Failed to generate Excel file. Falling back to CSV export.'
+    )
+    
+    // Fallback to CSV
+    const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
+    downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
+  }
+}
+
+// Helper function to prepare Excel data and track styles
+const prepareExcelData = (
+  currentData: BusinessQuarterRow[], 
+  previousData: BusinessQuarterRow[],
+  currentQuarter: string,
+  previousQuarter: string | null
+) => {
+  const values: any[][] = []
+  const styles: { [key: string]: any } = {}
+  
+  const headers = [
+    'Asset Code', 'Entity Name (English)', 'Entity Name (Arabic)',
+    'CR Number', 'MOI Number', 'Country', 'Ownership %',
+    'Acquisition Date', 'Direct Parent', 'Ultimate Parent',
+    'Investment Type', 'Ownership Structure', 'Principal Activities', 'Currency'
+  ]
+  
+  const fieldKeys = [
+    'assetCode', 'entityNameEnglish', 'entityNameArabic',
+    'commercialRegistrationNumber', 'moiNumber', 'countryOfIncorporation',
+    'ownershipPercentage', 'acquisitionDisposalDate', 'directParentEntity',
+    'ultimateParentEntity', 'investmentRelationshipType', 'ownershipStructure',
+    'principalActivities', 'currency'
+  ]
+  
+  // Title and metadata
+  values.push(['Quarter Comparison Report'])
+  values.push([`Selected Quarter: ${currentQuarter}`])
+  values.push([`Previous Quarter: ${previousQuarter || 'N/A (First quarter of data)'}`])
+  values.push([`Generated on: ${new Date().toLocaleString()}`])
+  values.push([]) // Empty row
+  
+  // Summary Statistics
+  values.push(['=== SUMMARY ==='])
+  values.push([`Selected Quarter Records: ${currentData.length}`])
+  values.push([`Previous Quarter Records: ${previousData.length}`])
+  values.push([`Net Change: ${currentData.length - previousData.length}`])
+  values.push([]) // Empty row
+  
+  // Changes Analysis
+  const changes = analyzeChanges(currentData, previousData)
+  values.push(['=== CHANGES ANALYSIS ==='])
+  values.push([`New Records: ${changes.added.length}`])
+  values.push([`Modified Records: ${changes.modified.length}`])
+  values.push([`Removed Records: ${changes.removed.length}`])
+  values.push([]) // Empty row
+  
+  // Selected Quarter Data Section
+  values.push([`=== ${currentQuarter.toUpperCase()} DATA ===`])
+  values.push(headers)
+  
+  // Add current quarter data with highlighting
+  currentData.forEach((row) => {
+    const dataRow: any[] = []
+    
+    // ===== FIXED: row index of the row we are about to push =====
+    const rowIndex = values.length   // ← this *will be* the row number in the sheet
+    // ===========================================================
+    
+    // Find matching row in previous data
+    const matchingRow = previousData.find(prevRow => 
+      prevRow.entityNameEnglish === row.entityNameEnglish &&
+      prevRow.commercialRegistrationNumber === row.commercialRegistrationNumber
+    )
+    
+    fieldKeys.forEach((fieldKey, colIndex) => {
+      const currentValue = (row as any)[fieldKey]
+      const displayValue = fieldKey === 'ownershipPercentage' 
+        ? (currentValue?.toString() || '0')
+        : (currentValue || '')
+      
+      dataRow.push(displayValue)
+      
+      // Track cells that need highlighting
+      if (matchingRow) {
+        const previousValue = (matchingRow as any)[fieldKey]
+        if (currentValue !== previousValue) {
+          // Mark this cell for yellow highlighting - use rowIndex, not currentRow
+          const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
+          styles[cellAddress] = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } } }
+        }
+      } else {
+        // New record - highlight entire row in light yellow - use rowIndex, not currentRow
+        const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
+        styles[cellAddress] = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFACD' } } }
+      }
+    })
+    
+    values.push(dataRow)  // <- after we're done styling
+  })
+  
+  values.push([]) // Empty row
+  
+  // Previous Quarter Data Section (if exists)
+  if (previousData.length > 0) {
+    values.push([`=== ${(previousQuarter || 'PREVIOUS').toUpperCase()} DATA ===`])
+    values.push(headers)
+    
+    // Add previous quarter data
+    previousData.forEach((row) => {
+      const dataRow: any[] = []
+      
+      fieldKeys.forEach((fieldKey) => {
+        const value = (row as any)[fieldKey]
+        const displayValue = fieldKey === 'ownershipPercentage' 
+          ? (value?.toString() || '0')
+          : (value || '')
+        dataRow.push(displayValue)
+      })
+      
+      values.push(dataRow)
+    })
+    
+    values.push([]) // Empty row
+  }
+  
+  // Modified Records Details
+  if (changes.modified.length > 0) {
+    values.push(['=== MODIFIED RECORDS (Changed between quarters) ==='])
+    changes.modified.forEach(change => {
+      values.push([`Entity: ${change.current.entityNameEnglish}`])
+      values.push(['Field Changes:'])
+      change.changes.forEach(fieldChange => {
+        values.push([`  ${fieldChange.field}: "${fieldChange.previousValue}" → "${fieldChange.currentValue}"`])
+      })
+      values.push([]) // Empty row
+    })
+  }
+  
+  // New Records Section
+  if (changes.added.length > 0) {
+    values.push(['=== NEW RECORDS (Added in Selected Quarter) ==='])
+    values.push(headers)
+    changes.added.forEach((row) => {
+      const dataRow = fieldKeys.map(fieldKey => {
+        const value = (row as any)[fieldKey]
+        return fieldKey === 'ownershipPercentage' 
+          ? (value?.toString() || '0')
+          : (value || '')
+      })
+      values.push(dataRow)
+    })
+    values.push([]) // Empty row
+  }
+  
+  // Removed Records Section
+  if (changes.removed.length > 0) {
+    values.push(['=== REMOVED RECORDS (Present in Previous Quarter Only) ==='])
+    values.push(headers)
+    changes.removed.forEach((row) => {
+      const dataRow = fieldKeys.map(fieldKey => {
+        const value = (row as any)[fieldKey]
+        return fieldKey === 'ownershipPercentage' 
+          ? (value?.toString() || '0')
+          : (value || '')
+      })
+      values.push(dataRow)
+    })
+  }
+  
+  return { values, styles }
+}
+
+// Helper function to apply styles to Excel worksheet
+const applyExcelStyles = (worksheet: any, styles: { [key: string]: any }) => {
+  // Note: Using xlsx-js-style library for full styling support
+  
+  console.log('=== Excel Styles Debug ===')
+  console.log('Total styles to apply:', Object.keys(styles).length)
+  console.log('Style addresses:', Object.keys(styles))
+  console.log('Sample style object:', styles[Object.keys(styles)[0]])
+  
+  Object.keys(styles).forEach(cellAddress => {
+    if (worksheet[cellAddress]) {
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {}
+      }
+      Object.assign(worksheet[cellAddress].s, styles[cellAddress])
+    }
+  })
+  
+  // Quick sanity check - verify styles are attached
+  const sampleCells = ['A18', 'A19', 'B18', 'B19']
+  console.log('Sample cell styles after application:')
+  sampleCells.forEach(cell => {
+    if (worksheet[cell]?.s) {
+      console.log(`${cell}:`, worksheet[cell].s)
+    }
+  })
+  console.log('=== End Excel Styles Debug ===')
+}
+
+// Helper function to download Excel file
+const downloadExcelFile = (buffer: ArrayBuffer, filename: string) => {
+  const blob = new Blob([buffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  })
+  const link = document.createElement('a')
+  
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+}
+
+// Helper function to detect current custom quarter based on date
+const detectCurrentCustomQuarter = (): string => {
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11, we need 1-12
+  const currentYear = now.getFullYear()
+  
+  if (currentMonth >= 1 && currentMonth <= 6) {
+    return `First Half ${currentYear}`
+  } else if (currentMonth >= 7 && currentMonth <= 9) {
+    return `Quarter 3 ${currentYear}`
+  } else if (currentMonth >= 10 && currentMonth <= 12) {
+    return `Quarter 4 ${currentYear}`
+  }
+  
+  // Fallback (should never reach here)
+  return `First Half ${currentYear}`
+}
+
+// Helper function to get previous quarter
+const getPreviousCustomQuarter = (currentQuarter: string): string | null => {
+  const year = currentQuarter.split(' ')[currentQuarter.split(' ').length - 1]
+  const yearNum = parseInt(year)
+  
+  if (currentQuarter.includes('First Half')) {
+    // Previous to First Half is Quarter 4 of previous year
+    return `Quarter 4 ${yearNum - 1}`
+  } else if (currentQuarter.includes('Quarter 3')) {
+    // Previous to Quarter 3 is First Half of same year
+    return `First Half ${yearNum}`
+  } else if (currentQuarter.includes('Quarter 4')) {
+    // Previous to Quarter 4 is Quarter 3 of same year
+    return `Quarter 3 ${yearNum}`
+  }
+  
+  return null
+}
+
+// Helper function to generate CSV content comparing two quarters
+const generateComparisonCSV = (
+  currentData: BusinessQuarterRow[], 
+  previousData: BusinessQuarterRow[],
+  currentQuarter: string,
+  previousQuarter: string | null
+): string => {
+  const csvRows: string[] = []
+  
+  // CSV Headers
+  csvRows.push('Quarter Comparison Report')
+  csvRows.push(`Selected Quarter: ${currentQuarter}`)
+  csvRows.push(`Previous Quarter: ${previousQuarter || 'N/A (First quarter of data)'}`)
+  csvRows.push(`Generated on: ${new Date().toLocaleString()}`)
+  csvRows.push('') // Empty line
+  
+  // Legend for change indicators
+  csvRows.push('=== LEGEND ===')
+  csvRows.push('[CHANGED] value [/CHANGED] = Changed value in selected quarter (new)')
+  csvRows.push('[OLD] value [/OLD] = Changed value in previous quarter (old)')
+  csvRows.push('[NEW] = Record added in selected quarter')
+  csvRows.push('[REMOVED] = Record removed in selected quarter')
+  csvRows.push('') // Empty line
+  
+  // Summary Statistics
+  csvRows.push('=== SUMMARY ===')
+  csvRows.push(`Selected Quarter Records: ${currentData.length}`)
+  csvRows.push(`Previous Quarter Records: ${previousData.length}`)
+  csvRows.push(`Net Change: ${currentData.length - previousData.length}`)
+  csvRows.push('') // Empty line
+  
+  // Changes Analysis
+  const changes = analyzeChanges(currentData, previousData)
+  
+  csvRows.push('=== CHANGES ANALYSIS ===')
+  csvRows.push(`New Records: ${changes.added.length}`)
+  csvRows.push(`Modified Records: ${changes.modified.length}`)
+  csvRows.push(`Removed Records: ${changes.removed.length}`)
+  csvRows.push('') // Empty line
+  
+  // Selected Quarter Data with change highlighting
+  csvRows.push(`=== ${currentQuarter.toUpperCase()} DATA ===`)
+  csvRows.push(generateDataTableCSVWithHighlights(currentData, previousData, 'current'))
+  csvRows.push('') // Empty line
+  
+  // Previous Quarter Data (if exists) with change highlighting
+  if (previousData.length > 0) {
+    csvRows.push(`=== ${(previousQuarter || 'PREVIOUS').toUpperCase()} DATA ===`)
+    csvRows.push(generateDataTableCSVWithHighlights(previousData, currentData, 'previous'))
+    csvRows.push('') // Empty line
+  }
+  
+  // Detailed Changes
+  if (changes.added.length > 0) {
+    csvRows.push('=== NEW RECORDS (Added in Selected Quarter) ===')
+    csvRows.push(generateDataTableCSV(changes.added))
+    csvRows.push('') // Empty line
+  }
+  
+  if (changes.removed.length > 0) {
+    csvRows.push('=== REMOVED RECORDS (Present in Previous Quarter Only) ===')
+    csvRows.push(generateDataTableCSV(changes.removed))
+    csvRows.push('') // Empty line
+  }
+  
+  if (changes.modified.length > 0) {
+    csvRows.push('=== MODIFIED RECORDS (Changed between quarters) ===')
+    changes.modified.forEach(change => {
+      csvRows.push(`Entity: ${change.current.entityNameEnglish}`)
+      csvRows.push('Field Changes:')
+      change.changes.forEach(fieldChange => {
+        csvRows.push(`  ${fieldChange.field}: "${fieldChange.previousValue}" → "${fieldChange.currentValue}"`)
+      })
+      csvRows.push('') // Empty line
+    })
+  }
+  
+  return csvRows.join('\n')
+}
+
+// Helper function to analyze changes between quarters
+const analyzeChanges = (currentData: BusinessQuarterRow[], previousData: BusinessQuarterRow[]) => {
+  const added: BusinessQuarterRow[] = []
+  const removed: BusinessQuarterRow[] = []
+  const modified: { current: BusinessQuarterRow; previous: BusinessQuarterRow; changes: any[] }[] = []
+  
+  // Find added records (in current but not in previous)
+  currentData.forEach(currentRow => {
+    const matchInPrevious = previousData.find(prevRow => 
+      prevRow.entityNameEnglish === currentRow.entityNameEnglish &&
+      prevRow.commercialRegistrationNumber === currentRow.commercialRegistrationNumber
+    )
+    
+    if (!matchInPrevious) {
+      added.push(currentRow)
+    } else {
+      // Check for modifications
+      const fieldChanges = compareRows(currentRow, matchInPrevious)
+      if (fieldChanges.length > 0) {
+        modified.push({
+          current: currentRow,
+          previous: matchInPrevious,
+          changes: fieldChanges
+        })
+      }
+    }
+  })
+  
+  // Find removed records (in previous but not in current)
+  previousData.forEach(prevRow => {
+    const matchInCurrent = currentData.find(currentRow => 
+      currentRow.entityNameEnglish === prevRow.entityNameEnglish &&
+      currentRow.commercialRegistrationNumber === prevRow.commercialRegistrationNumber
+    )
+    
+    if (!matchInCurrent) {
+      removed.push(prevRow)
+    }
+  })
+  
+  return { added, removed, modified }
+}
+
+// Helper function to compare two rows and find differences
+const compareRows = (current: BusinessQuarterRow, previous: BusinessQuarterRow) => {
+  const changes: any[] = []
+  const fieldsToCompare = [
+    'entityNameEnglish', 'entityNameArabic', 'countryOfIncorporation',
+    'ownershipPercentage', 'directParentEntity', 'investmentRelationshipType',
+    'ownershipStructure', 'principalActivities', 'currency'
+  ]
+  
+  fieldsToCompare.forEach(field => {
+    const currentValue = (current as any)[field]
+    const previousValue = (previous as any)[field]
+    
+    if (currentValue !== previousValue) {
+      changes.push({
+        field,
+        currentValue: currentValue || '',
+        previousValue: previousValue || ''
+      })
+    }
+  })
+  
+  return changes
+}
+
+// Helper function to generate CSV table for data rows
+const generateDataTableCSV = (data: BusinessQuarterRow[]): string => {
+  if (data.length === 0) return 'No data available'
+  
+  const headers = [
+    'Asset Code', 'Entity Name (English)', 'Entity Name (Arabic)',
+    'CR Number', 'MOI Number', 'Country', 'Ownership %',
+    'Acquisition Date', 'Direct Parent', 'Ultimate Parent',
+    'Investment Type', 'Ownership Structure', 'Principal Activities', 'Currency'
+  ]
+  
+  const csvLines: string[] = []
+  csvLines.push(headers.join(','))
+  
+  data.forEach(row => {
+    const csvRow = [
+      escapeCSVField(row.assetCode || ''),
+      escapeCSVField(row.entityNameEnglish || ''),
+      escapeCSVField(row.entityNameArabic || ''),
+      escapeCSVField(row.commercialRegistrationNumber || ''),
+      escapeCSVField(row.moiNumber || ''),
+      escapeCSVField(row.countryOfIncorporation || ''),
+      row.ownershipPercentage?.toString() || '0',
+      escapeCSVField(row.acquisitionDisposalDate || ''),
+      escapeCSVField(row.directParentEntity || ''),
+      escapeCSVField(row.ultimateParentEntity || ''),
+      escapeCSVField(row.investmentRelationshipType || ''),
+      escapeCSVField(row.ownershipStructure || ''),
+      escapeCSVField(row.principalActivities || ''),
+      escapeCSVField(row.currency || '')
+    ]
+    csvLines.push(csvRow.join(','))
+  })
+  
+  return csvLines.join('\n')
+}
+
+// Enhanced helper function to generate CSV table with change highlighting
+const generateDataTableCSVWithHighlights = (
+  primaryData: BusinessQuarterRow[], 
+  comparisonData: BusinessQuarterRow[], 
+  mode: 'current' | 'previous'
+): string => {
+  if (primaryData.length === 0) return 'No data available'
+  
+  const headers = [
+    'Asset Code', 'Entity Name (English)', 'Entity Name (Arabic)',
+    'CR Number', 'MOI Number', 'Country', 'Ownership %',
+    'Acquisition Date', 'Direct Parent', 'Ultimate Parent',
+    'Investment Type', 'Ownership Structure', 'Principal Activities', 'Currency'
+  ]
+  
+  const csvLines: string[] = []
+  csvLines.push(headers.join(','))
+  
+  const fieldKeys = [
+    'assetCode', 'entityNameEnglish', 'entityNameArabic',
+    'commercialRegistrationNumber', 'moiNumber', 'countryOfIncorporation',
+    'ownershipPercentage', 'acquisitionDisposalDate', 'directParentEntity',
+    'ultimateParentEntity', 'investmentRelationshipType', 'ownershipStructure',
+    'principalActivities', 'currency'
+  ]
+  
+  primaryData.forEach(row => {
+    // Find matching row in comparison data
+    const matchingRow = comparisonData.find(compRow => 
+      compRow.entityNameEnglish === row.entityNameEnglish &&
+      compRow.commercialRegistrationNumber === row.commercialRegistrationNumber
+    )
+    
+    const csvRow = fieldKeys.map(fieldKey => {
+      const currentValue = (row as any)[fieldKey]
+      const displayValue = fieldKey === 'ownershipPercentage' 
+        ? (currentValue?.toString() || '0')
+        : escapeCSVField(currentValue || '')
+      
+      if (!matchingRow) {
+        // New or removed record - highlight the entire row with prefix
+        const prefix = mode === 'current' ? '[NEW] ' : '[REMOVED] '
+        return fieldKey === fieldKeys[0] ? prefix + displayValue : displayValue
+      }
+      
+      // Compare field values
+      const comparisonValue = (matchingRow as any)[fieldKey]
+      const hasChanged = currentValue !== comparisonValue
+      
+      if (hasChanged) {
+        // Mark changed cells with clear text indicators
+        if (mode === 'current') {
+          return `[CHANGED] ${displayValue} [/CHANGED]` // Clear text indicators for new values
+        } else {
+          return `[OLD] ${displayValue} [/OLD]` // Clear text indicators for old values
+        }
+      }
+      
+      return displayValue
+    })
+    
+    csvLines.push(csvRow.join(','))
+  })
+  
+  return csvLines.join('\n')
+}
+
+// Helper function to escape CSV fields that contain commas or quotes
+const escapeCSVField = (field: string): string => {
+  if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+    return `"${field.replace(/"/g, '""')}"`
+  }
+  return field
+}
+
+// Helper function to download CSV file
+const downloadCSVFile = (csvContent: string, filename: string) => {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } else {
+    // Fallback for browsers that don't support download attribute
+    window.open('data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent))
+  }
 }
 
 const handleDuplicateRow = (row: any, insertIndex?: number) => {
@@ -381,6 +1318,11 @@ const handleRowModified = (row: any) => {
   } catch (error) {
     console.error('Failed to save row modification:', error)
   }
+}
+
+const handleValidationChange = (hasErrors: boolean, errorCount: number) => {
+  hasValidationErrors.value = hasErrors
+  validationErrorCount.value = errorCount
 }
 
 const handlePageChange = (page: number) => {
@@ -429,16 +1371,18 @@ const handleModalSubmit = (data: Record<string, any>) => {
   try {
     if (modalState.value.mode === 'create') {
       const newRow = dataService.addRow(selectedPeriod.value, {
-        companyName: data.companyName || '',
-        reportingPeriod: selectedPeriod.value,
-        currency: data.currency || 'SAR',
-        relatedParties: data.relatedParties || '',
-        arabicLegalName: data.arabicLegalName || '',
-        relationship: data.relationship || '',
-        directParent: data.directParent || '',
-        percentOwnership: data.percentOwnership || '0',
-        countryOfIncorporation: data.countryOfIncorporation || 'Saudi Arabia',
+        entityNameEnglish: data.entityNameEnglish || '',
+        entityNameArabic: data.entityNameArabic || '',
         commercialRegistrationNumber: data.commercialRegistrationNumber || '',
+        moiNumber: data.moiNumber || '',
+        countryOfIncorporation: data.countryOfIncorporation || 'SAU',
+        ownershipPercentage: data.ownershipPercentage || 0,
+        acquisitionDisposalDate: data.acquisitionDisposalDate || undefined,
+        directParentEntity: data.directParentEntity || '',
+        ultimateParentEntity: 'Direct to PIF',
+        investmentRelationshipType: data.investmentRelationshipType || '',
+        ownershipStructure: data.ownershipStructure || 'Direct to PIF',
+        principalActivities: data.principalActivities || '',
         isModified: false,
         isNewRow: false
       })
@@ -556,5 +1500,22 @@ const resetDataToDefault = () => {
 // Expose resetDataToDefault to window for console access during development
 if (typeof window !== 'undefined') {
   (window as any).resetDataToDefault = resetDataToDefault
+  
+  // Also expose the report generation functions for testing
+  ;(window as any).testQuarterDetection = () => {
+    console.log('=== Quarter Detection Test ===')
+    const currentQuarter = selectedPeriod.value // Use selected period instead of date detection
+    const previousQuarter = getPreviousCustomQuarter(currentQuarter)
+    console.log('Selected Quarter (UI):', currentQuarter)
+    console.log('Previous Quarter:', previousQuarter)
+    
+    // Also test the date-based detection for comparison
+    const dateBasedQuarter = detectCurrentCustomQuarter()
+    console.log('Date-based Quarter:', dateBasedQuarter)
+    
+    return { currentQuarter, previousQuarter, dateBasedQuarter }
+  }
+  
+  ;(window as any).generateTestReport = handleGenerateReport
 }
 </script>

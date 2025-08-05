@@ -39,14 +39,59 @@
                 </label>
                 
                 <div :class="styles.inputWrapper">
-                  <!-- Currency Field - SearchableDropdown -->
+                  <!-- Entity Name English - SearchableDropdown -->
                   <SearchableDropdown
-                    v-if="column.key === 'currency'"
+                    v-if="column.key === 'entityNameEnglish'"
                     v-model="formData[column.key]"
-                    :options="currenciesData"
+                    :options="entityNamesOptions"
                     :placeholder="getPlaceholder(column)"
                     :disabled="mode === 'view'"
-                    :search-placeholder="t('common.searchCurrency')"
+                    :search-placeholder="t('common.searchEntityName')"
+                    :no-results-text="t('common.noResults')"
+                    :class="[
+                      styles.fieldInput,
+                      mode === 'view' ? styles.readonly : ''
+                    ]"
+                  />
+                  
+                  <!-- Entity Name Arabic - SearchableDropdown -->
+                  <SearchableDropdown
+                    v-else-if="column.key === 'entityNameArabic'"
+                    v-model="formData[column.key]"
+                    :options="entityNamesArabicOptions"
+                    :placeholder="getPlaceholder(column)"
+                    :disabled="mode === 'view'"
+                    :search-placeholder="t('common.searchEntityNameArabic')"
+                    :no-results-text="t('common.noResults')"
+                    :class="[
+                      styles.fieldInput,
+                      mode === 'view' ? styles.readonly : ''
+                    ]"
+                  />
+                  
+                  <!-- Investment Relationship Type - SearchableDropdown -->
+                  <SearchableDropdown
+                    v-else-if="column.key === 'investmentRelationshipType'"
+                    v-model="formData[column.key]"
+                    :options="investmentRelationshipOptions"
+                    :placeholder="getPlaceholder(column)"
+                    :disabled="mode === 'view'"
+                    :search-placeholder="t('common.searchRelationshipType')"
+                    :no-results-text="t('common.noResults')"
+                    :class="[
+                      styles.fieldInput,
+                      mode === 'view' ? styles.readonly : ''
+                    ]"
+                  />
+                  
+                  <!-- Ownership Structure - SearchableDropdown -->
+                  <SearchableDropdown
+                    v-else-if="column.key === 'ownershipStructure'"
+                    v-model="formData[column.key]"
+                    :options="ownershipStructureOptions"
+                    :placeholder="getPlaceholder(column)"
+                    :disabled="mode === 'view'"
+                    :search-placeholder="t('common.searchOwnershipStructure')"
                     :no-results-text="t('common.noResults')"
                     :class="[
                       styles.fieldInput,
@@ -63,6 +108,21 @@
                     :disabled="mode === 'view'"
                     :search-placeholder="t('common.searchCountry')"
                     :no-results-text="t('common.noResults')"
+                    :class="[
+                      styles.fieldInput,
+                      mode === 'view' ? styles.readonly : ''
+                    ]"
+                  />
+                  
+                  <!-- Direct Parent Entity - SearchableDropdown -->
+                  <SearchableDropdown
+                    v-else-if="column.key === 'directParentEntity'"
+                    v-model="formData[column.key]"
+                    :options="directParentEntityOptions"
+                    :placeholder="getPlaceholder(column)"
+                    :disabled="mode === 'view'"
+                    :search-placeholder="t('common.searchParentEntity')"
+                    :no-results-text="t('common.noParentEntities')"
                     :class="[
                       styles.fieldInput,
                       mode === 'view' ? styles.readonly : ''
@@ -158,7 +218,6 @@ import { useI18n } from '../../hooks/useI18n'
 import SearchableDropdown from '../SearchableDropdown/SearchableDropdown.vue'
 import styles from './DataModal.module.css'
 import countriesData from '../../data/countries.json'
-import currenciesData from '../../data/currencies.json'
 
 interface Column {
   key: string
@@ -173,6 +232,7 @@ interface Props {
   mode: 'view' | 'edit' | 'create'
   columns: Column[]
   data?: Record<string, any>
+  tableData?: Record<string, any>[] // All table data for validation purposes
 }
 
 const props = defineProps<Props>()
@@ -188,6 +248,86 @@ const { t } = useI18n()
 const formData = ref<Record<string, any>>({})
 const errors = ref<Record<string, string>>({})
 
+// Dropdown options
+const entityNamesOptions = [
+  { value: 'Saudi Aramco', label: 'Saudi Aramco' },
+  { value: 'SABIC', label: 'SABIC' },
+  { value: 'Al Rajhi Bank', label: 'Al Rajhi Bank' },
+  { value: 'Saudi Telecom Company', label: 'Saudi Telecom Company' },
+  { value: 'Ma\'aden', label: 'Ma\'aden' },
+  { value: 'NEOM Technology', label: 'NEOM Technology' },
+  { value: 'Saudi Green Initiative', label: 'Saudi Green Initiative' },
+  { value: 'Public Investment Fund', label: 'Public Investment Fund' },
+  { value: 'Saudi National Bank', label: 'Saudi National Bank' },
+  { value: 'Alinma Bank', label: 'Alinma Bank' },
+  { value: 'Riyad Bank', label: 'Riyad Bank' },
+  { value: 'Banque Saudi Fransi', label: 'Banque Saudi Fransi' },
+  { value: 'Emirates NBD', label: 'Emirates NBD' },
+  { value: 'Qatar Petroleum International', label: 'Qatar Petroleum International' },
+  { value: 'Mubadala Investment Company', label: 'Mubadala Investment Company' },
+  { value: 'Kuwait Investment Authority', label: 'Kuwait Investment Authority' }
+]
+
+const entityNamesArabicOptions = [
+  { value: 'شركة أرامكو السعودية', label: 'شركة أرامكو السعودية' },
+  { value: 'الشركة السعودية للصناعات الأساسية - سابك', label: 'الشركة السعودية للصناعات الأساسية - سابك' },
+  { value: 'مصرف الراجحي', label: 'مصرف الراجحي' },
+  { value: 'شركة الاتصالات السعودية', label: 'شركة الاتصالات السعودية' },
+  { value: 'شركة التعدين العربية السعودية - معادن', label: 'شركة التعدين العربية السعودية - معادن' },
+  { value: 'شركة نيوم للتكنولوجيا', label: 'شركة نيوم للتكنولوجيا' },
+  { value: 'مبادرة السعودية الخضراء', label: 'مبادرة السعودية الخضراء' },
+  { value: 'صندوق الاستثمارات العامة', label: 'صندوق الاستثمارات العامة' },
+  { value: 'البنك الأهلي السعودي', label: 'البنك الأهلي السعودي' },
+  { value: 'بنك الإنماء', label: 'بنك الإنماء' },
+  { value: 'بنك الرياض', label: 'بنك الرياض' },
+  { value: 'البنك السعودي الفرنسي', label: 'البنك السعودي الفرنسي' },
+  { value: 'بنك الإمارات دبي الوطني', label: 'بنك الإمارات دبي الوطني' },
+  { value: 'قطر للبترول الدولية', label: 'قطر للبترول الدولية' },
+  { value: 'شركة مبادلة للاستثمار', label: 'شركة مبادلة للاستثمار' },
+  { value: 'مؤسسة الكويت للاستثمار', label: 'مؤسسة الكويت للاستثمار' }
+]
+
+const investmentRelationshipOptions = [
+  { value: 'Subsidiary', label: 'Subsidiary' },
+  { value: 'Joint venture', label: 'Joint venture' },
+  { value: 'Associate', label: 'Associate' },
+  { value: 'Subsidiary of Associate', label: 'Subsidiary of Associate' },
+  { value: 'Joint Venture of Associate', label: 'Joint Venture of Associate' },
+  { value: 'Associate of Associate', label: 'Associate of Associate' },
+  { value: 'Subsidiary of a JV', label: 'Subsidiary of a JV' },
+  { value: 'Associate of a JV', label: 'Associate of a JV' },
+  { value: 'Joint Venture of a JV', label: 'Joint Venture of a JV' }
+]
+
+const ownershipStructureOptions = [
+  { value: 'Direct and In-Direct', label: 'Direct and In-Direct' },
+  { value: 'Direct to PIF', label: 'Direct to PIF' }
+]
+
+// Direct Parent Entity options - dynamically generated from existing Entity Names in the table
+const directParentEntityOptions = computed(() => {
+  if (!props.tableData || props.tableData.length === 0) {
+    return []
+  }
+  
+  const currentRowId = props.data?.id // ID of the row being edited (if applicable)
+  
+  // Get all unique Entity Names from the table data, excluding the current row
+  const entityNames = props.tableData
+    .filter(row => row.id !== currentRowId) // Exclude current row
+    .map(row => row.entityNameEnglish)
+    .filter(name => name && String(name).trim() !== '') // Filter out empty/null values
+    .map(name => String(name).trim()) // Ensure string and trim whitespace
+  
+  // Remove duplicates and create dropdown options
+  const uniqueNames = [...new Set(entityNames)]
+  
+  return uniqueNames.map(name => ({
+    value: name,
+    label: name
+  }))
+})
+
 // Initialize form data
 const initializeFormData = () => {
   const data: Record<string, any> = {}
@@ -198,17 +338,17 @@ const initializeFormData = () => {
     } else {
       // Default values for new records
       switch (column.key) {
-        case 'reportingPeriod':
-          data[column.key] = 'Q1 2025'
-          break
-        case 'currency':
-          data[column.key] = 'SAR'
-          break
         case 'countryOfIncorporation':
           data[column.key] = 'SAU'
           break
-        case 'percentOwnership':
-          data[column.key] = '0'
+        case 'ownershipPercentage':
+          data[column.key] = 0
+          break
+        case 'ultimateParentEntity':
+          data[column.key] = 'Direct to PIF'
+          break
+        case 'ownershipStructure':
+          data[column.key] = 'Direct to PIF'
           break
         default:
           data[column.key] = ''
@@ -256,18 +396,38 @@ const getModalSubtitle = () => {
 }
 
 const isRequired = (column: Column) => {
-  const requiredFields = ['companyName', 'reportingPeriod', 'currency']
+  const requiredFields = [
+    'entityNameEnglish', 
+    'entityNameArabic', 
+    'commercialRegistrationNumber',
+    'countryOfIncorporation',
+    'ownershipPercentage',
+    'directParentEntity',
+    'ultimateParentEntity',
+    'investmentRelationshipType',
+    'ownershipStructure'
+  ]
+  
+  // MOI is required only for Saudi entities
+  if (column.key === 'moiNumber') {
+    return formData.value.countryOfIncorporation === 'SAU'
+  }
+  
   return requiredFields.includes(column.key) || column.required
 }
 
 const getPlaceholder = (column: Column) => {
   const placeholders: Record<string, string> = {
-    companyName: t('businessQuarters.placeholders.companyName'),
-    arabicLegalName: t('businessQuarters.placeholders.arabicLegalName'),
-    percentOwnership: '0',
+    entityNameEnglish: t('businessQuarters.placeholders.entityNameEnglish'),
+    entityNameArabic: t('businessQuarters.placeholders.entityNameArabic'),
     commercialRegistrationNumber: '1234567890',
-    currency: t('common.selectCurrency'),
-    countryOfIncorporation: t('common.selectCountry')
+    moiNumber: '7001234567',
+    ownershipPercentage: '0',
+    directParentEntity: t('common.selectEntity'),
+    investmentRelationshipType: t('common.selectRelationshipType'),
+    ownershipStructure: t('common.selectOwnershipStructure'),
+    countryOfIncorporation: t('common.selectCountry'),
+    principalActivities: t('businessQuarters.placeholders.principalActivities')
   }
   return placeholders[column.key] || `${t('common.enter')} ${t(`businessQuarters.columns.${column.key}`)}`
 }
@@ -299,10 +459,84 @@ const validateForm = () => {
     }
     
     // Additional validations
-    if (column.key === 'percentOwnership') {
+    if (column.key === 'ownershipPercentage') {
       const value = parseFloat(formData.value[column.key])
       if (isNaN(value) || value < 0 || value > 100) {
         newErrors[column.key] = t('validation.invalidPercentage')
+      }
+    }
+    
+    // English text validation
+    if (column.key === 'entityNameEnglish') {
+      const value = formData.value[column.key]
+      if (value && !/^[a-zA-Z0-9\s&.'()-]+$/.test(value)) {
+        newErrors[column.key] = 'Entity name must contain only English characters, numbers, and common symbols'
+      }
+    }
+    
+    // Arabic text validation
+    if (column.key === 'entityNameArabic') {
+      const value = formData.value[column.key]
+      if (value && !/^[\u0600-\u06FF\s\u0660-\u0669.-]+$/.test(value)) {
+        newErrors[column.key] = 'Arabic legal name must contain only Arabic characters and numbers'
+      }
+    }
+    
+    // CR Number validation - always required, special rules for Saudi entities
+    if (column.key === 'commercialRegistrationNumber') {
+      const value = formData.value[column.key]
+      const isSaudiEntity = formData.value.countryOfIncorporation === 'SAU'
+      
+      // CR Number is always required for all countries
+      if (!value || String(value).trim() === '') {
+        newErrors[column.key] = 'Commercial Registration Number is required'
+      } else if (isSaudiEntity) {
+        // For Saudi entities, must be numbers only
+        if (!/^[0-9]+$/.test(String(value).trim())) {
+          newErrors[column.key] = 'Commercial Registration Number must contain numbers only for Saudi entities'
+        }
+      }
+      // For non-Saudi entities, any alphanumeric string is acceptable (no additional validation)
+    }
+    
+    // MOI Number validation - required only for Saudi entities
+    if (column.key === 'moiNumber') {
+      const value = formData.value[column.key]
+      const isSaudiEntity = formData.value.countryOfIncorporation === 'SAU'
+      
+      if (isSaudiEntity) {
+        // MOI Number is required for Saudi entities
+        if (!value || String(value).trim() === '') {
+          newErrors[column.key] = 'MOI Number is required for Saudi entities'
+        } else {
+          // Must be numbers only for Saudi entities
+          if (!/^[0-9]+$/.test(String(value).trim())) {
+            newErrors[column.key] = 'MOI Number must contain numbers only for Saudi entities'
+          }
+        }
+      }
+      // For non-Saudi entities, MOI number is optional (no validation needed)
+    }
+    
+    // Direct Parent Entity validation
+    if (column.key === 'directParentEntity') {
+      const value = formData.value[column.key]
+      
+      // Direct Parent is not required, but if provided, must exist as Entity Name in another row
+      if (value && String(value).trim() !== '') {
+        if (props.tableData && props.tableData.length > 0) {
+          const currentRowId = props.data?.id // ID of the row being edited (if applicable)
+          
+          const entityNameExists = props.tableData.some(tableRow => 
+            tableRow.id !== currentRowId && // Must be a different row (exclude current row being edited)
+            tableRow.entityNameEnglish && 
+            String(tableRow.entityNameEnglish).trim() === String(value).trim()
+          )
+          
+          if (!entityNameExists) {
+            newErrors[column.key] = 'Direct Parent Entity must exist as an Entity Name in another row'
+          }
+        }
       }
     }
   })

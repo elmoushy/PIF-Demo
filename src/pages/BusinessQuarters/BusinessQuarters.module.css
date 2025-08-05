@@ -8,6 +8,12 @@
   overflow-x: hidden;
 }
 
+/* Changed cell highlighting for in-browser visualization */
+.changedCell {
+  background: #fff9b0 !important;
+  border: 1px solid #ffd700 !important;
+}
+
 /* Enhanced animated background with floating particles */
 .businessQuartersPage::before {
   content: '';

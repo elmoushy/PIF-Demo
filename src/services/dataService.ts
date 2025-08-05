@@ -5,18 +5,40 @@
 
 export interface BusinessQuarterRow {
   id: string
-  companyName: string
-  reportingPeriod: string
-  currency: string
-  relatedParties: string
-  arabicLegalName: string
-  relationship: string
-  directParent: string
-  percentOwnership: string
-  countryOfIncorporation: string
+  // 1. Asset Code - conditional
+  assetCode?: string
+  // 2. Entity Name (English)
+  entityNameEnglish: string
+  // 3. Entity Name (Arabic Legal Name)
+  entityNameArabic: string
+  // 4. Commercial Registration (CR) Number
   commercialRegistrationNumber: string
+  // 5. Ministry of Interior (MOI) Number (700 Number)
+  moiNumber?: string
+  // 6. Country of Incorporation
+  countryOfIncorporation: string
+  // 7. Ownership Percentage (%)
+  ownershipPercentage: number
+  // 8. Acquisition or Disposal Date
+  acquisitionDisposalDate?: string
+  // 9. Direct Parent Entity
+  directParentEntity: string
+  // 10. Ultimate Parent Entity
+  ultimateParentEntity: string
+  // 11. Investment Relationship Type
+  investmentRelationshipType: string
+  // 12. Ownership Structure
+  ownershipStructure: string
+  // 13. Entity's Principal Activities
+  principalActivities?: string
+  // 14. Currency
+  currency?: string
+  
+  // Metadata
   isModified?: boolean
   isNewRow?: boolean
+  isFromPreviousQuarter?: boolean // Flag to indicate data loaded from previous quarter
+  previousQuarterSource?: string // Source quarter name
   createdAt?: string
   updatedAt?: string
 }
@@ -162,7 +184,7 @@ class DataService {
     const duplicatedRows = rowsToDuplicate.map(row => ({
       ...row,
       id: this.generateId(),
-      companyName: `${row.companyName} (Copy)`,
+      entityNameEnglish: `${row.entityNameEnglish} (Copy)`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isModified: true,
@@ -288,25 +310,106 @@ class DataService {
   }
 
   /**
+   * Get the previous quarter for a given quarter
+   */
+  getPreviousQuarter(currentPeriod: string): string | null {
+    const quarterMap: Record<string, string | null> = {
+      'First Half 2025': null, // No previous quarter
+      'Quarter 3 2025': 'First Half 2025',
+      'Quarter 4 2025': 'Quarter 3 2025'
+    }
+    
+    return quarterMap[currentPeriod] || null
+  }
+
+  /**
+   * Check if a quarter has saved data (is locked from editing previous quarters)
+   */
+  isQuarterSaved(period: string): boolean {
+    const periodData = this.loadPeriodData(period)
+    return periodData.some(row => !row.isNewRow)
+  }
+
+  /**
+   * Get read-only status for a quarter based on future quarter saves
+   */
+  isQuarterReadOnly(period: string): boolean {
+    const allQuarters = ['First Half 2025', 'Quarter 3 2025', 'Quarter 4 2025']
+    const currentIndex = allQuarters.indexOf(period)
+    
+    if (currentIndex === -1) return false
+    
+    // Check if any future quarter has saved data
+    for (let i = currentIndex + 1; i < allQuarters.length; i++) {
+      if (this.isQuarterSaved(allQuarters[i])) {
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * Load data from previous quarter for viewing (without saving to current quarter)
+   */
+  loadPreviousQuarterData(currentPeriod: string): BusinessQuarterRow[] {
+    const previousQuarter = this.getPreviousQuarter(currentPeriod)
+    
+    if (!previousQuarter) {
+      return [] // No previous quarter data available
+    }
+    
+    const previousData = this.loadPeriodData(previousQuarter)
+    
+    // Return cloned data with new IDs and marked as viewing from previous quarter
+    return previousData.map(row => ({
+      ...row,
+      id: this.generateId(), // New ID to avoid conflicts
+      isModified: false,
+      isNewRow: true, // Mark as new until explicitly saved
+      isFromPreviousQuarter: true, // Flag to indicate source
+      previousQuarterSource: previousQuarter,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }))
+  }
+
+  /**
+   * Save quarter data and mark it as finalized
+   */
+  saveQuarterDataFinal(period: string, data: BusinessQuarterRow[]): void {
+    const finalizedData = data.map(row => ({
+      ...row,
+      isNewRow: false, // Mark as saved
+      isFromPreviousQuarter: false, // No longer from previous quarter
+      updatedAt: new Date().toISOString()
+    }))
+    
+    this.savePeriodData(period, finalizedData)
+  }
+
+  /**
    * Get default sample data for initial setup
    */
   private getDefaultData(): QuarterData {
-    const currentYear = new Date().getFullYear()
-    
     return {
-      [`Q1 ${currentYear}`]: [
+      'First Half 2025': [
         {
           id: this.generateId(),
-          companyName: 'Saudi Aramco',
-          reportingPeriod: `Q1 ${currentYear}`,
-          currency: 'SAR',
-          relatedParties: 'Government Entity',
-          arabicLegalName: 'شركة أرامكو السعودية',
-          relationship: 'Subsidiary',
-          directParent: 'Public Investment Fund',
-          percentOwnership: '100',
-          countryOfIncorporation: 'Saudi Arabia',
+          assetCode: 'SA001',
+          entityNameEnglish: 'saudi-aramco',
+          entityNameArabic: 'aramco-ar',
           commercialRegistrationNumber: '2052101150',
+          moiNumber: '7001234567',
+          countryOfIncorporation: 'SAU',
+          ownershipPercentage: 100,
+          acquisitionDisposalDate: '2025-01-15',
+          directParentEntity: 'sabic',
+          ultimateParentEntity: 'Direct to PIF',
+          investmentRelationshipType: 'subsidiary',
+          ownershipStructure: 'public-listed',
+          principalActivities: 'Oil and gas exploration, production, refining, and marketing',
+          currency: 'SAR',
           isModified: false,
           isNewRow: false,
           createdAt: new Date().toISOString(),
@@ -314,97 +417,26 @@ class DataService {
         },
         {
           id: this.generateId(),
-          companyName: 'NEOM Technology',
-          reportingPeriod: `Q1 ${currentYear}`,
-          currency: 'USD',
-          relatedParties: 'Joint Venture',
-          arabicLegalName: 'شركة نيوم للتكنولوجيا',
-          relationship: 'Joint Venture',
-          directParent: 'NEOM Company',
-          percentOwnership: '51',
-          countryOfIncorporation: 'Saudi Arabia',
+          assetCode: 'SA002',
+          entityNameEnglish: 'sabic',
+          entityNameArabic: 'sabic-ar',
           commercialRegistrationNumber: '2052101151',
-          isModified: false,
-          isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: this.generateId(),
-          companyName: 'Saudi Green Initiative',
-          reportingPeriod: `Q1 ${currentYear}`,
-          currency: 'SAR',
-          relatedParties: 'Environmental Entity',
-          arabicLegalName: 'مبادرة السعودية الخضراء',
-          relationship: 'Subsidiary',
-          directParent: 'Crown Prince Foundation',
-          percentOwnership: '100',
-          countryOfIncorporation: 'Saudi Arabia',
-          commercialRegistrationNumber: '2052101152',
-          isModified: false,
-          isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: this.generateId(),
-          companyName: 'Al Rajhi Bank',
-          reportingPeriod: `Q1 ${currentYear}`,
-          currency: 'SAR',
-          relatedParties: 'Financial Institution',
-          arabicLegalName: 'مصرف الراجحي',
-          relationship: 'Associate',
-          directParent: 'Al Rajhi Banking Group',
-          percentOwnership: '25',
-          countryOfIncorporation: 'Saudi Arabia',
-          commercialRegistrationNumber: '1010001054',
-          isModified: false,
-          isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: this.generateId(),
-          companyName: 'Emirates NBD',
-          reportingPeriod: `Q1 ${currentYear}`,
+          moiNumber: '7001234568',
+          countryOfIncorporation: 'ARE',
+          ownershipPercentage: 75,
+          acquisitionDisposalDate: '2025-02-20',
+          directParentEntity: 'saudi-aramco',
+          ultimateParentEntity: 'Direct to PIF',
+          investmentRelationshipType: 'associate',
+          ownershipStructure: 'private-limited',
+          principalActivities: 'Petrochemicals, chemicals, and fertilizers manufacturing',
           currency: 'AED',
-          relatedParties: 'Regional Partner',
-          arabicLegalName: 'بنك الإمارات دبي الوطني',
-          relationship: 'Joint Venture',
-          directParent: 'Emirates Investment Authority',
-          percentOwnership: '30',
-          countryOfIncorporation: 'United Arab Emirates',
-          commercialRegistrationNumber: '1014548',
-          isModified: false,
-          isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: this.generateId(),
-          companyName: 'Qatar Petroleum International',
-          reportingPeriod: `Q1 ${currentYear}`,
-          currency: 'QAR',
-          relatedParties: 'Energy Consortium',
-          arabicLegalName: 'قطر للبترول الدولية',
-          relationship: 'Strategic Partnership',
-          directParent: 'Qatar Energy',
-          percentOwnership: '20',
-          countryOfIncorporation: 'Qatar',
-          commercialRegistrationNumber: '45123',
           isModified: false,
           isNewRow: false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-      ],
-      [`Q2 ${currentYear}`]: [],
-      [`Q3 ${currentYear}`]: [],
-      [`Q4 ${currentYear}`]: [],
-      [`Q1 ${currentYear - 1}`]: [],
-      [`Q2 ${currentYear - 1}`]: [],
-      [`Q3 ${currentYear - 1}`]: [],
-      [`Q4 ${currentYear - 1}`]: []
+      ]
     }
   }
 }

@@ -175,6 +175,10 @@
     "noDataToCopy": "No data found in the selected quarter",
     "saveChanges": "Save Changes",
     "generateReport": "Generate Report",
+    "reportGenerated": "Report Generated",
+    "reportGeneratedDesc": "Comparison report for {current} vs {previous} has been downloaded.",
+    "reportGenerationFailed": "Report Generation Failed",
+    "reportGenerationFailedDesc": "Failed to generate the comparison report. Please try again.",
     "duplicate": "Duplicate",
     "actions": "Actions",
     "selected": "selected",
@@ -195,20 +199,28 @@
     "recordDetails": "Record Details",
     "fillRequiredFields": "Please fill in the required fields",
     "placeholders": {
-      "companyName": "Enter company name...",
-      "arabicLegalName": "Enter Arabic legal name..."
+      "entityNameEnglish": "Enter entity name in English...",
+      "entityNameArabic": "Enter Arabic legal name...",
+      "commercialRegistrationNumber": "Enter CR number...",
+      "moiNumber": "Enter MOI number...",
+      "ownershipPercentage": "Enter ownership percentage...",
+      "directParentEntity": "Select direct parent entity...",
+      "principalActivities": "Enter principal activities..."
     },
     "columns": {
-      "companyName": "Entity Name",
-      "reportingPeriod": "Reporting Period",
-      "currency": "Currency",
-      "relatedParties": "Related Parties",
-      "arabicLegalName": "Arabic Legal Name",
-      "relationship": "Relationship",
-      "directParent": "Direct Parent",
-      "percentOwnership": "Percent Ownership",
+      "assetCode": "Asset Code",
+      "entityNameEnglish": "Entity Name (English)",
+      "entityNameArabic": "Entity Name (Arabic Legal Name)", 
+      "commercialRegistrationNumber": "Commercial Registration (CR) Number",
+      "moiNumber": "Ministry of Interior (MOI) Number (700 Number)",
       "countryOfIncorporation": "Country of Incorporation",
-      "commercialRegistrationNumber": "Commercial Registration Number"
+      "ownershipPercentage": "Ownership Percentage (%)",
+      "acquisitionDisposalDate": "Acquisition or Disposal Date",
+      "directParentEntity": "Direct Parent Entity",
+      "ultimateParentEntity": "Ultimate Parent Entity", 
+      "investmentRelationshipType": "Investment Relationship Type",
+      "ownershipStructure": "Ownership Structure (Direct or Indirect)",
+      "principalActivities": "Entity's Principal Activities"
     }
   },
   "welcome": {

@@ -1,182 +1,182 @@
 [
   {
-    "value": "Saudi Arabia",
+    "value": "SAU",
     "label": "Saudi Arabia"
   },
   {
-    "value": "United Arab Emirates",
+    "value": "ARE",
     "label": "United Arab Emirates"
   },
   {
-    "value": "Egypt",
+    "value": "EGY",
     "label": "Egypt"
   },
   {
-    "value": "Jordan",
+    "value": "JOR",
     "label": "Jordan"
   },
   {
-    "value": "Lebanon",
+    "value": "LBN",
     "label": "Lebanon"
   },
   {
-    "value": "Kuwait",
+    "value": "KWT",
     "label": "Kuwait"
   },
   {
-    "value": "Qatar",
+    "value": "QAT",
     "label": "Qatar"
   },
   {
-    "value": "Bahrain",
+    "value": "BHR",
     "label": "Bahrain"
   },
   {
-    "value": "Oman",
+    "value": "OMN",
     "label": "Oman"
   },
   {
-    "value": "Yemen",
+    "value": "YEM",
     "label": "Yemen"
   },
   {
-    "value": "Iraq",
+    "value": "IRQ",
     "label": "Iraq"
   },
   {
-    "value": "Syria",
+    "value": "SYR",
     "label": "Syria"
   },
   {
-    "value": "Palestine",
+    "value": "PSE",
     "label": "Palestine"
   },
   {
-    "value": "Morocco",
+    "value": "MAR",
     "label": "Morocco"
   },
   {
-    "value": "Algeria",
+    "value": "DZA",
     "label": "Algeria"
   },
   {
-    "value": "Tunisia",
+    "value": "TUN",
     "label": "Tunisia"
   },
   {
-    "value": "Libya",
+    "value": "LBY",
     "label": "Libya"
   },
   {
-    "value": "Sudan",
+    "value": "SDN",
     "label": "Sudan"
   },
   {
-    "value": "United States",
+    "value": "USA",
     "label": "United States"
   },
   {
-    "value": "United Kingdom",
+    "value": "GBR",
     "label": "United Kingdom"
   },
   {
-    "value": "Germany",
+    "value": "DEU",
     "label": "Germany"
   },
   {
-    "value": "France",
+    "value": "FRA",
     "label": "France"
   },
   {
-    "value": "Italy",
+    "value": "ITA",
     "label": "Italy"
   },
   {
-    "value": "Spain",
+    "value": "ESP",
     "label": "Spain"
   },
   {
-    "value": "Netherlands",
+    "value": "NLD",
     "label": "Netherlands"
   },
   {
-    "value": "Canada",
+    "value": "CAN",
     "label": "Canada"
   },
   {
-    "value": "Australia",
+    "value": "AUS",
     "label": "Australia"
   },
   {
-    "value": "Japan",
+    "value": "JPN",
     "label": "Japan"
   },
   {
-    "value": "South Korea",
+    "value": "KOR",
     "label": "South Korea"
   },
   {
-    "value": "China",
+    "value": "CHN",
     "label": "China"
   },
   {
-    "value": "India",
+    "value": "IND",
     "label": "India"
   },
   {
-    "value": "Singapore",
+    "value": "SGP",
     "label": "Singapore"
   },
   {
-    "value": "Malaysia",
+    "value": "MYS",
     "label": "Malaysia"
   },
   {
-    "value": "Indonesia",
+    "value": "IDN",
     "label": "Indonesia"
   },
   {
-    "value": "Thailand",
+    "value": "THA",
     "label": "Thailand"
   },
   {
-    "value": "Philippines",
+    "value": "PHL",
     "label": "Philippines"
   },
   {
-    "value": "Brazil",
+    "value": "BRA",
     "label": "Brazil"
   },
   {
-    "value": "Argentina",
+    "value": "ARG",
     "label": "Argentina"
   },
   {
-    "value": "Mexico",
+    "value": "MEX",
     "label": "Mexico"
   },
   {
-    "value": "Russia",
+    "value": "RUS",
     "label": "Russia"
   },
   {
-    "value": "Turkey",
+    "value": "TUR",
     "label": "Turkey"
   },
   {
-    "value": "Iran",
+    "value": "IRN",
     "label": "Iran"
   },
   {
-    "value": "Pakistan",
+    "value": "PAK",
     "label": "Pakistan"
   },
   {
-    "value": "South Africa",
+    "value": "ZAF",
     "label": "South Africa"
   },
   {
-    "value": "Nigeria",
+    "value": "NGA",
     "label": "Nigeria"
   }
 ]

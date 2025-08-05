@@ -153,17 +153,14 @@ const selectedCurrency = ref('')
 const selectedCountry = ref('')
 
 // Quarter/Year state
-const currentDate = new Date()
-const currentYear = currentDate.getFullYear()
-const selectedYear = ref(currentYear)
+const selectedYear = ref(2025)
 const selectedQuarter = ref(1)
 
 // Quarters configuration
 const quarters = [
-  { id: 1, label: 'Q1', period: 'Jan - Mar' },
-  { id: 2, label: 'Q2', period: 'Apr - Jun' },
-  { id: 3, label: 'Q3', period: 'Jul - Sep' },
-  { id: 4, label: 'Q4', period: 'Oct - Dec' }
+  { id: 1, label: 'First Half', period: 'Months 1-6' },
+  { id: 3, label: 'Quarter 3', period: 'Months 7-9' },
+  { id: 4, label: 'Quarter 4', period: 'Months 10-12' }
 ]
 
 // Dropdown options
@@ -191,7 +188,8 @@ const hasActiveFilters = computed(() => {
 
 // Computed
 const currentPeriod = computed(() => {
-  return `Q${selectedQuarter.value} ${selectedYear.value}`
+  const quarter = quarters.find(q => q.id === selectedQuarter.value)
+  return quarter ? `${quarter.label} ${selectedYear.value}` : `Quarter ${selectedQuarter.value} ${selectedYear.value}`
 })
 
 // Get display labels for selected values
