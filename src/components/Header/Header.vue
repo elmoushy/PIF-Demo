@@ -49,7 +49,7 @@
         </div>
 
         <!-- Language Toggle -->
-        <div :class="styles.languageToggleWrapper">
+        <!-- <div :class="styles.languageToggleWrapper">
           <button 
             :class="[styles.languageToggle, { [styles.arabicMode]: i18n.currentLanguage === 'ar' }]" 
             @click.stop="toggleLanguage" 
@@ -72,7 +72,7 @@
               </div>
             </div>
           </button>
-        </div>
+        </div> -->
 
         <!-- Notification Button -->
         <div :class="styles.notificationWrapper">

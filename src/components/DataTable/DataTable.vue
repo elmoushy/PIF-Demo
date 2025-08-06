@@ -74,6 +74,17 @@
             {{ t('businessQuarters.insertRow') }}
             <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
           </button>
+
+          <button 
+            @click="showUploadModal = true"
+            :class="styles.uploadButton"
+            :disabled="props.readOnly"
+            :title="props.readOnly ? 'Cannot upload: Quarter is locked' : ''"
+          >
+            <span :class="styles.buttonIcon">📤</span>
+            {{ t('xlsxUpload.title') }}
+            <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
+          </button>
           
           <button 
             @click="$emit('saveChanges')"
@@ -161,7 +172,8 @@
             :class="[
               styles.tableRow, 
               row.isModified ? styles.modified : '',
-              selectedRows.includes(row.id) ? styles.selected : ''
+              selectedRows.includes(row.id) ? styles.selected : '',
+              isRowReadOnly(row) ? styles.readOnlyRow : ''
             ]"
           >
             <!-- Row Selection Checkbox -->
@@ -171,6 +183,8 @@
                 :checked="selectedRows.includes(row.id)"
                 @change="toggleRowSelection(row.id)"
                 :class="styles.rowCheckbox"
+                :disabled="isRowReadOnly(row)"
+                :title="isRowReadOnly(row) ? 'Cannot select read-only row' : ''"
               />
             </td>
             <td 
@@ -178,6 +192,8 @@
               :key="column.key" 
               :class="styles.tableCell"
               :style="getColumnStyle(column.key)"
+              :data-row-id="row.id"
+              :data-column-key="column.key"
             >
               <div :class="styles.cellContainer">
                 <!-- SearchableDropdown for Entity Name English -->
@@ -189,11 +205,11 @@
                   placeholder="Select entity name..."
                   search-placeholder="Search entities..."
                   no-results-text="No entities found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Entity Name Arabic -->
@@ -205,11 +221,11 @@
                   placeholder="Select Arabic legal name..."
                   search-placeholder="Search Arabic names..."
                   no-results-text="No Arabic names found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Country of Incorporation -->
@@ -221,11 +237,11 @@
                   placeholder="Select country..."
                   search-placeholder="Search countries..."
                   no-results-text="No countries found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Investment Relationship Type -->
@@ -237,11 +253,11 @@
                   placeholder="Select relationship type..."
                   search-placeholder="Search relationship types..."
                   no-results-text="No relationship types found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Ownership Structure -->
@@ -253,11 +269,11 @@
                   placeholder="Select ownership structure..."
                   search-placeholder="Search ownership structures..."
                   no-results-text="No ownership structures found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Direct Parent Entity -->
@@ -269,11 +285,11 @@
                   placeholder="Select direct parent..."
                   search-placeholder="Search parent entities..."
                   no-results-text="No parent entities found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- SearchableDropdown for Currency -->
@@ -285,11 +301,11 @@
                   placeholder="Select currency..."
                   search-placeholder="Search currencies..."
                   no-results-text="No currencies found"
-                  :disabled="props.readOnly"
+                  :disabled="isRowReadOnly(row)"
                   :class="[
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                 />
                 <!-- Regular input for other editable columns -->
@@ -302,24 +318,25 @@
                     styles.cellInput,
                     column.required && !row[column.key] ? styles.requiredField : '',
                     !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    props.readOnly ? styles.readOnlyField : ''
+                    isRowReadOnly(row) ? styles.readOnlyField : ''
                   ]"
                   :type="column.type || 'text'"
                   :required="column.required"
-                  :placeholder="props.readOnly ? 'Read-only' : (column.required ? 'Required *' : '')"
-                  :disabled="props.readOnly"
-                  :readonly="props.readOnly"
+                  :placeholder="isRowReadOnly(row) ? 'Read-only' : (column.required ? 'Required *' : '')"
+                  :disabled="isRowReadOnly(row)"
+                  :readonly="isRowReadOnly(row)"
                 />
                 <!-- Display span for non-editable columns -->
                 <span v-else :class="styles.cellText">
                   {{ row[column.key] }}
-                  <span v-if="props.readOnly && column.editable" :class="styles.lockIcon">🔒</span>
+                  <span v-if="isRowReadOnly(row) && column.editable" :class="styles.lockIcon">🔒</span>
                 </span>
                 
                 <!-- Validation Error Message -->
                 <div 
                   v-if="!isFieldValid(row, column.key) && fieldErrors[row.id]?.[column.key]" 
                   :class="styles.cellError"
+                  @click.stop
                 >
                   {{ fieldErrors[row.id][column.key] }}
                 </div>
@@ -340,31 +357,31 @@
                 <button 
                   @click="$emit('editRow', row)"
                   :class="styles.actionButton"
-                  :title="props.readOnly ? 'Cannot edit: Quarter is locked' : t('businessQuarters.editRecord')"
-                  :disabled="props.readOnly"
+                  :title="isRowReadOnly(row) ? 'Cannot edit: Row is read-only' : t('businessQuarters.editRecord')"
+                  :disabled="isRowReadOnly(row)"
                 >
                   <span :class="styles.actionIcon">✏️</span>
-                  <span v-if="props.readOnly" :class="styles.lockIcon">🔒</span>
+                  <span v-if="isRowReadOnly(row)" :class="styles.lockIcon">🔒</span>
                 </button>
                 <button 
                   @click="duplicateRowInPlace(row)"
                   :class="styles.duplicateButton"
-                  :title="props.readOnly ? 'Cannot duplicate: Quarter is locked' : t('businessQuarters.duplicate')"
-                  :disabled="props.readOnly"
+                  :title="isRowReadOnly(row) ? 'Cannot duplicate: Row is read-only' : t('businessQuarters.duplicate')"
+                  :disabled="isRowReadOnly(row)"
                 >
                   <span :class="styles.actionIcon">📋</span>
-                  <span v-if="props.readOnly" :class="styles.lockIcon">🔒</span>
+                  <span v-if="isRowReadOnly(row)" :class="styles.lockIcon">🔒</span>
                 </button>
                 <!-- Delete button for unsaved rows -->
                 <button 
                   v-if="row.isNewRow"
                   @click="deleteUnsavedRow(row.id)"
                   :class="styles.deleteRowButton"
-                  :title="props.readOnly ? 'Cannot delete: Quarter is locked' : t('businessQuarters.deleteUnsaved')"
-                  :disabled="props.readOnly"
+                  :title="isRowReadOnly(row) ? 'Cannot delete: Row is read-only' : t('businessQuarters.deleteUnsaved')"
+                  :disabled="isRowReadOnly(row)"
                 >
                   <span :class="styles.actionIcon">🗑️</span>
-                  <span v-if="props.readOnly" :class="styles.lockIcon">🔒</span>
+                  <span v-if="isRowReadOnly(row)" :class="styles.lockIcon">🔒</span>
                 </button>
               </div>
             </td>
@@ -385,13 +402,23 @@
       <h3>{{ t('businessQuarters.noData') }}</h3>
       <p>{{ t('businessQuarters.noDataDescription') }}</p>
     </div>
+
+    <!-- XLSX Upload Modal -->
+    <XlsxUploadModal
+      :is-visible="showUploadModal"
+      :columns="props.columns"
+      :current-period="props.currentPeriod"
+      @close="showUploadModal = false"
+      @upload="handleXlsxUpload"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from '../../hooks/useI18n'
-import SearchableDropdown from '../SearchableDropdown/SearchableDropdown.vue'
+import SearchableDropdown from '../SearchableDropdown'
+import XlsxUploadModal from '../XlsxUploadModal'
 import styles from './DataTable.module.css'
 import countriesData from '../../data/countries.json'
 import currenciesData from '../../data/currencies.json'
@@ -407,6 +434,8 @@ interface TableRow {
   id: string
   isModified?: boolean
   isNewRow?: boolean // New property to track unsaved rows
+  isRowReadOnly?: boolean // New property to control row-level read-only access
+  dataSource?: string // Property to identify data source ('admin' or 'company')
   [key: string]: any
 }
 
@@ -418,6 +447,7 @@ interface Props {
   currentPeriod?: string // Current quarter/year selection display
   readOnly?: boolean // Quarter is read-only (locked from editing)
   hasDataFromPreviousQuarter?: boolean // Indicates if data was loaded from previous quarter
+  userRole?: string // User role for conditional rendering ('Administrator' or 'Company')
 }
 
 // Column key constants for dropdown columns
@@ -436,7 +466,8 @@ const props = withDefaults(defineProps<Props>(), {
   tableId: 'default',
   currentPeriod: '',
   readOnly: false,
-  hasDataFromPreviousQuarter: false
+  hasDataFromPreviousQuarter: false,
+  userRole: 'Administrator'
 })
 
 const emit = defineEmits<{
@@ -453,12 +484,16 @@ const emit = defineEmits<{
   bulkDelete: [rowIds: string[]]
   bulkDuplicate: [rowIds: string[]]
   validationChange: [hasErrors: boolean, errorCount: number]
+  xlsxUpload: [data: TableRow[]]
 }>()
 
 const { t } = useI18n()
 
 // Multi-select functionality
 const selectedRows = ref<string[]>([])
+
+// Upload modal state
+const showUploadModal = ref(false)
 
 // Validation state
 const fieldErrors = ref<Record<string, Record<string, string>>>({})
@@ -498,7 +533,9 @@ const canSave = computed(() => {
 
 // Multi-select computed properties
 const isAllSelected = computed(() => {
-  return props.data.length > 0 && selectedRows.value.length === props.data.length
+  // Only consider non-read-only rows for selection
+  const editableRows = props.data.filter(row => !isRowReadOnly(row))
+  return editableRows.length > 0 && selectedRows.value.length === editableRows.length
 })
 
 // Dropdown options
@@ -543,23 +580,36 @@ const arabicLegalNameOptions = computed(() => [
   { value: 'sisco-ar', label: 'الشركة السعودية للخدمات الاستثمارية' }
 ])
 
-// Investment Relationship Type options
+// Investment Relationship Type options - Fixed list as per requirements
 const relationshipTypeOptions = computed(() => [
-  { value: 'subsidiary', label: 'Subsidiary' },
-  { value: 'associate', label: 'Associate' },
-  { value: 'joint-venture', label: 'Joint Venture' },
-  { value: 'investment', label: 'Investment' },
-  { value: 'partnership', label: 'Partnership' }
+  { value: 'Subsidiary', label: 'Subsidiary' },
+  { value: 'Joint venture', label: 'Joint venture' },
+  { value: 'Associate', label: 'Associate' },
+  { value: 'Subsidiary of Associate', label: 'Subsidiary of Associate' },
+  { value: 'Joint Venture of Associate', label: 'Joint Venture of Associate' },
+  { value: 'Associate of Associate', label: 'Associate of Associate' },
+  { value: 'Subsidiary of a JV', label: 'Subsidiary of a JV' },
+  { value: 'Associate', label: 'Associate' },
+  { value: 'Subsidiary', label: 'Subsidiary' },
+  { value: 'Associate of a JV', label: 'Associate of a JV' },
+  { value: 'Joint Venture of a JV', label: 'Joint Venture of a JV' }
 ])
 
-// Ownership Structure options
-const ownershipStructureOptions = computed(() => [
-  { value: 'public-listed', label: 'Public Listed Company' },
-  { value: 'private-limited', label: 'Private Limited Company' },
-  { value: 'partnership', label: 'Partnership' },
-  { value: 'sole-proprietorship', label: 'Sole Proprietorship' },
-  { value: 'government-entity', label: 'Government Entity' }
-])
+// Ownership Structure options - Based on user role
+const ownershipStructureOptions = computed(() => {
+  if (props.userRole === 'Company') {
+    // For Company users: Show dropdown with Direct/In-direct options
+    return [
+      { value: 'Direct', label: 'Direct' },
+      { value: 'In-direct', label: 'In-direct' }
+    ]
+  } else {
+    // For Administrator (PIF_SubmitIQ): Hardcoded value "Direct to PIF"
+    return [
+      { value: 'Direct to PIF', label: 'Direct to PIF' }
+    ]
+  }
+})
 
 // Direct Parent Entity options - dynamically generated from existing Entity Names in the table
 const directParentOptions = computed(() => {
@@ -578,7 +628,27 @@ const directParentOptions = computed(() => {
   }))
 })
 
+// Check if a specific row should be read-only
+const isRowReadOnly = (row: TableRow): boolean => {
+  // Global read-only state (quarter locked)
+  if (props.readOnly) {
+    return true
+  }
+  
+  // Row-level read-only (for example, Company data when viewed by PIF_SubmitIQ)
+  if (row.isRowReadOnly) {
+    return true
+  }
+  
+  return false
+}
+
 const markAsModified = (row: TableRow) => {
+  // Prevent modification if the row is read-only
+  if (isRowReadOnly(row)) {
+    return
+  }
+  
   row.isModified = true
   
   // Initialize field errors for the row if not exists
@@ -602,6 +672,11 @@ const markAsModified = (row: TableRow) => {
 
 // Handle dropdown value changes
 const handleDropdownChange = (row: TableRow, columnKey: string, value: string | number) => {
+  // Prevent changes if the row is read-only
+  if (isRowReadOnly(row)) {
+    return
+  }
+  
   row[columnKey] = value
   validateField(row, columnKey)
   
@@ -619,11 +694,21 @@ const toggleSelectAll = () => {
   if (isAllSelected.value) {
     selectedRows.value = []
   } else {
-    selectedRows.value = props.data.map(row => row.id)
+    // Only select non-read-only rows
+    selectedRows.value = props.data
+      .filter(row => !isRowReadOnly(row))
+      .map(row => row.id)
   }
 }
 
 const toggleRowSelection = (rowId: string) => {
+  // Find the row to check if it's read-only
+  const row = props.data.find(r => r.id === rowId)
+  if (row && isRowReadOnly(row)) {
+    // Don't allow selection of read-only rows
+    return
+  }
+  
   const index = selectedRows.value.indexOf(rowId)
   if (index > -1) {
     selectedRows.value.splice(index, 1)
@@ -638,13 +723,43 @@ const clearSelection = () => {
 
 // Bulk actions
 const bulkDelete = () => {
-  emit('bulkDelete', [...selectedRows.value])
+  // Filter out read-only rows from bulk delete
+  const deletableRows = selectedRows.value.filter(rowId => {
+    const row = props.data.find(r => r.id === rowId)
+    return row && !isRowReadOnly(row)
+  })
+  
+  if (deletableRows.length === 0) {
+    // If no rows can be deleted, show a message (you could emit a notification event here)
+    console.warn('No rows can be deleted - all selected rows are read-only')
+    return
+  }
+  
+  emit('bulkDelete', deletableRows)
   selectedRows.value = []
 }
 
 const bulkDuplicate = () => {
-  emit('bulkDuplicate', [...selectedRows.value])
+  // Filter out read-only rows from bulk duplicate
+  const duplicatableRows = selectedRows.value.filter(rowId => {
+    const row = props.data.find(r => r.id === rowId)
+    return row && !isRowReadOnly(row)
+  })
+  
+  if (duplicatableRows.length === 0) {
+    // If no rows can be duplicated, show a message
+    console.warn('No rows can be duplicated - all selected rows are read-only')
+    return
+  }
+  
+  emit('bulkDuplicate', duplicatableRows)
   selectedRows.value = []
+}
+
+// Handle XLSX upload
+const handleXlsxUpload = (data: TableRow[]) => {
+  showUploadModal.value = false
+  emit('xlsxUpload', data)
 }
 
 // Delete unsaved row
@@ -785,13 +900,13 @@ const loadColumnWidths = () => {
   // Set default widths for columns that don't have saved widths
   props.columns.forEach(column => {
     if (!columnWidths.value[column.key]) {
-      columnWidths.value[column.key] = 150 // Default width
+      columnWidths.value[column.key] = 225 // Increased default width to prevent text overflow
     }
   })
   
   // Set default width for actions column
   if (!columnWidths.value['actions']) {
-    columnWidths.value['actions'] = 120
+    columnWidths.value['actions'] = 150 // Increased actions column width
   }
 }
 
@@ -806,7 +921,7 @@ const startResize = (event: MouseEvent, columnKey: string) => {
   isResizing.value = true
   resizingColumn.value = columnKey
   startX.value = event.clientX
-  startWidth.value = columnWidths.value[columnKey] || 150
+  startWidth.value = columnWidths.value[columnKey] || 220
   
   document.addEventListener('mousemove', handleResize)
   document.addEventListener('mouseup', stopResize)
@@ -819,7 +934,7 @@ const handleResize = (event: MouseEvent) => {
   if (!isResizing.value || !resizingColumn.value) return
   
   const delta = event.clientX - startX.value
-  const newWidth = Math.max(80, startWidth.value + delta) // Minimum width of 80px
+  const newWidth = Math.max(120, startWidth.value + delta) // Increased minimum width to prevent text overflow
   
   columnWidths.value[resizingColumn.value] = newWidth
 }
@@ -842,9 +957,9 @@ const stopResize = () => {
 // Get column style with width
 const getColumnStyle = (columnKey: string) => {
   return {
-    width: `${columnWidths.value[columnKey] || 150}px`,
-    minWidth: `${columnWidths.value[columnKey] || 150}px`,
-    maxWidth: `${columnWidths.value[columnKey] || 150}px`
+    width: `${columnWidths.value[columnKey] || 220}px`,
+    minWidth: `${columnWidths.value[columnKey] || 220}px`,
+    maxWidth: `${columnWidths.value[columnKey] || 220}px`
   }
 }
 

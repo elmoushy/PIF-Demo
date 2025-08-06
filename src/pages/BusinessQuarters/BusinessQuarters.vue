@@ -21,6 +21,7 @@
         :currentPeriod="selectedPeriod"
         :readOnly="isCurrentQuarterReadOnly"
         :hasDataFromPreviousQuarter="hasDataFromPreviousQuarter"
+        :userRole="currentUser?.role"
         table-id="business-quarters-table"
         @addRow="handleAddRow"
         @saveChanges="handleSaveChanges"
@@ -35,6 +36,7 @@
         @bulkDelete="handleBulkDelete"
         @bulkDuplicate="handleBulkDuplicate"
         @validationChange="handleValidationChange"
+        @xlsxUpload="handleXlsxUpload"
       />
 
       <!-- Pagination -->
@@ -54,6 +56,7 @@
       :columns="tableColumns"
       :data="modalState.data"
       :tableData="tableData"
+      :userRole="currentUser?.role"
       @close="closeModal"
       @submit="handleModalSubmit"
     />
@@ -67,6 +70,16 @@
       @copyData="handleCopyData"
     />
 
+    <!-- Report Modal -->
+    <ReportModal
+      :isOpen="reportModalState.isOpen"
+      :userRole="currentUser?.role || 'Company'"
+      :username="currentUser?.username || ''"
+      :currentPeriod="selectedPeriod"
+      @close="closeReportModal"
+      @reportGenerated="handleReportGenerated"
+    />
+
     <!-- Notification Container -->
     <NotificationContainer />
   </div>
@@ -74,10 +87,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useI18n } from '../../hooks/useI18n'
+import { useAuthStore } from '../../stores/useAuthStore'
 import { dataService, type BusinessQuarterRow } from '../../services/dataService'
 import { notificationService } from '../../services/notificationService'
-import * as XLSX from 'xlsx-js-style'
 import Header from '../../components/Header/Header.vue'
 // import QuarterSelector from '../../components/QuarterSelector/QuarterSelector.vue'
 import FilterBar from '../../components/FilterBar/FilterBar.vue'
@@ -85,10 +97,11 @@ import DataTable from '../../components/DataTable/DataTable.vue'
 import Pagination from '../../components/Pagination/Pagination.vue'
 import DataModal from '../../components/DataModal/DataModal.vue'
 import QuarterCopyModal from '../../components/QuarterCopyModal/QuarterCopyModal.vue'
+import ReportModal from '../../components/ReportModal/ReportModal.vue'
 import NotificationContainer from '../../components/NotificationContainer/NotificationContainer.vue'
 import styles from './BusinessQuarters.module.css'
 
-const { t } = useI18n()
+const authStore = useAuthStore()
 
 // State
 const loading = ref(false)
@@ -116,18 +129,24 @@ const copyModalState = ref({
   isOpen: false
 })
 
+// Report modal state
+const reportModalState = ref({
+  isOpen: false
+})
+
 // Validation state
 const hasValidationErrors = ref(false)
 const validationErrorCount = ref(0)
 
-// User role - this would typically come from authentication service
-const currentUser = ref('PIF_SubmitIQ') // or 'regular_user'
+// Current user from auth store
+const currentUser = computed(() => authStore.user)
+const isAdmin = computed(() => authStore.isAdmin)
 
-// Table configuration based on new requirements
+// Table configuration based on user role and new requirements
 const tableColumns = computed(() => {
   const columns = [
-    // 1. Asset Code - conditional visibility
-    ...(currentUser.value === 'PIF_SubmitIQ' ? [{ 
+    // 1. Asset Code - conditional visibility (only for Admin/PIF_SubmitIQ)
+    ...(isAdmin.value ? [{ 
       key: 'assetCode', 
       editable: true, 
       required: false,
@@ -205,13 +224,13 @@ const tableColumns = computed(() => {
       validation: 'entityReference'
     },
     
-    // 10. Ultimate Parent Entity - always "Direct to PIF"
+    // 10. Ultimate Parent Entity - always "PIF"
     { 
       key: 'ultimateParentEntity', 
       editable: false, 
       required: true,
       type: 'text',
-      defaultValue: 'Direct to PIF'
+      defaultValue: 'PIF'
     },
     
     // 11. Investment Relationship Type
@@ -227,7 +246,8 @@ const tableColumns = computed(() => {
       key: 'ownershipStructure', 
       editable: true, 
       required: true,
-      type: 'dropdown'
+      type: 'dropdown',
+      userRole: currentUser.value?.role // Pass user role for conditional rendering
     },
     
     // 13. Entity's Principal Activities
@@ -278,7 +298,7 @@ const tableColumns = computed(() => {
 //   // Ownership structure options
 //   ownershipStructure: [
 //     { value: 'Direct and In-Direct', label: 'Direct and In-Direct' },
-//     { value: 'Direct to PIF', label: 'Direct to PIF' }
+//     { value: 'PIF', label: 'PIF' }
 //   ]
 // }
 
@@ -430,11 +450,17 @@ const hasDataFromPreviousQuarter = computed(() => {
 // Event handlers
 const handlePeriodChange = (period: string, quarter: number, year: number) => {
   // Save current data to localStorage before switching periods
-  if (selectedPeriod.value && tableData.value.some(row => row.isModified)) {
+  if (selectedPeriod.value && tableData.value.some(row => row.isModified) && currentUser.value?.username) {
     try {
-      dataService.savePeriodData(selectedPeriod.value, tableData.value)
-      // Update allQuarterData for the modal
-      allQuarterData.value[selectedPeriod.value] = [...tableData.value]
+      // Filter out read-only rows to prevent saving them to current user's data
+      const editableDataOnly = tableData.value.filter(row => !row.isRowReadOnly)
+      
+      if (editableDataOnly.length > 0) {
+        dataService.saveUserPeriodData(currentUser.value.username, selectedPeriod.value, editableDataOnly)
+        // Update allQuarterData for the modal with editable data only
+        allQuarterData.value[selectedPeriod.value] = [...editableDataOnly]
+        console.log(`Auto-saved ${editableDataOnly.length} editable rows for ${currentUser.value.username} before period change`)
+      }
     } catch (error) {
       notificationService.error('Save Failed', 'Failed to save changes. Please try again.')
       return
@@ -447,23 +473,54 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
   
   // Load data for the new period from localStorage
   try {
-    let periodData = dataService.loadPeriodData(period)
+    let periodData: BusinessQuarterRow[] = []
+    let isFromPreviousQuarter = false
+    let previousQuarterSource: string | undefined
     
-    // If no data exists for current period, load from previous quarter
-    if (periodData.length === 0) {
-      const previousQuarterData = dataService.loadPreviousQuarterData(period)
-      if (previousQuarterData.length > 0) {
-        periodData = previousQuarterData
-        notificationService.info(
-          'Previous Quarter Data Loaded', 
-          `Data from previous quarter has been loaded for viewing. Click Save to finalize changes for ${period}.`
-        )
+    if (currentUser.value?.username) {
+      // Initialize user data if it doesn't exist
+      dataService.initializeUserData(currentUser.value.username)
+      
+      if (isAdmin.value) {
+        // For admin users, load combined data (both admin and company data)
+        console.log('=== LOADING COMBINED DATA FOR ADMIN ===')
+        periodData = dataService.getCombinedDataForAdmin(period)
+        console.log('Admin loaded combined data length:', periodData.length)
+        
+        // Check if admin's data OR company's data is from previous quarter
+        const adminResult = dataService.loadUserPeriodDataWithFallback('PIF_SubmitIQ', period)
+        const companyResult = dataService.loadUserPeriodDataWithFallback('Company', period)
+        
+        if (adminResult.isFromPreviousQuarter || companyResult.isFromPreviousQuarter) {
+          isFromPreviousQuarter = true
+          // Use the admin's source if available, otherwise company's source
+          previousQuarterSource = adminResult.previousQuarterSource || companyResult.previousQuarterSource
+        }
+      } else {
+        // For company users, use the new fallback logic
+        console.log('=== LOADING COMPANY DATA WITH FALLBACK ===')
+        const companyResult = dataService.loadUserPeriodDataWithFallback(currentUser.value.username, period)
+        periodData = companyResult.data
+        isFromPreviousQuarter = companyResult.isFromPreviousQuarter
+        previousQuarterSource = companyResult.previousQuarterSource
+        console.log('Company loaded data length:', periodData.length)
+        console.log('Company data is from previous quarter:', isFromPreviousQuarter)
       }
+    }
+    
+    // Show notification if data was loaded from previous quarter
+    if (isFromPreviousQuarter && previousQuarterSource) {
+      notificationService.info(
+        'Previous Quarter Data Loaded', 
+        `Data from ${previousQuarterSource} has been loaded for viewing. Click Save to finalize changes for ${period}.`
+      )
     }
     
     tableData.value = periodData.map(row => ({
       ...row,
-      isModified: false // Reset modified state when loading from storage
+      isModified: false, // Reset modified state when loading from storage
+      // Preserve the isFromPreviousQuarter flag if it exists
+      isFromPreviousQuarter: row.isFromPreviousQuarter || isFromPreviousQuarter
     }))
     
     // Update allQuarterData for the modal
@@ -502,9 +559,17 @@ const handleAddRow = () => {
     )
     return
   }
+
+  if (!currentUser.value?.username) {
+    notificationService.error('Cannot Add Row', 'No authenticated user found.')
+    return
+  }
   
   try {
-    const newRow = dataService.addRow(selectedPeriod.value, {
+    // Set default ownership structure based on user role
+    const defaultOwnershipStructure = isAdmin.value ? 'Direct to PIF' : 'Direct'
+    
+    const newRowData = {
       entityNameEnglish: '',
       entityNameArabic: '',
       commercialRegistrationNumber: '',
@@ -513,13 +578,27 @@ const handleAddRow = () => {
       ownershipPercentage: 0,
       acquisitionDisposalDate: undefined,
       directParentEntity: '',
-      ultimateParentEntity: 'Direct to PIF',
+      ultimateParentEntity: 'PIF',
       investmentRelationshipType: '',
-      ownershipStructure: 'Direct to PIF',
+      ownershipStructure: defaultOwnershipStructure,
       principalActivities: '',
       isModified: true,
-      isNewRow: true
-    })
+      isNewRow: true,
+      dataSource: isAdmin.value ? 'admin' : 'company'
+    }
+
+    // Add asset code only for admin users
+    if (isAdmin.value) {
+      Object.assign(newRowData, { assetCode: '' })
+    }
+    
+    // Create new row with generated ID
+    const newRow: BusinessQuarterRow = {
+      ...newRowData,
+      id: dataService.generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
     
     // Add to current table data
     tableData.value.push(newRow)
@@ -634,12 +713,40 @@ const handleSaveChanges = () => {
     notificationService.warning('No Changes', 'No changes detected to save.')
     return
   }
+
+  if (!currentUser.value?.username) {
+    notificationService.error('Cannot Save', 'No authenticated user found.')
+    return
+  }
   
   loading.value = true
   
   try {
-    // Use the new saveQuarterDataFinal method to mark quarter as finalized
-    dataService.saveQuarterDataFinal(selectedPeriod.value, tableData.value)
+    // Save user-specific data
+    if (isAdmin.value) {
+      // For admin users, need to separate and save data to appropriate user buckets
+      // Only save data that isn't read-only
+      const adminData = tableData.value.filter(row => 
+        (!row.dataSource || row.dataSource === 'admin') && !row.isRowReadOnly
+      )
+      const companyData = tableData.value.filter(row => 
+        row.dataSource === 'company' && !row.isRowReadOnly
+      )
+      
+      if (adminData.length > 0) {
+        dataService.saveUserPeriodData('PIF_SubmitIQ', selectedPeriod.value, adminData)
+      }
+      
+      // Note: Company data should not be saved by admin users since it's read-only
+      // This prevents accidental modification of Company data
+      if (companyData.length > 0) {
+        console.warn('Admin attempted to save Company data, but Company data is read-only')
+      }
+    } else {
+      // For company users, save only their own data (should never be read-only for themselves)
+      const editableData = tableData.value.filter(row => !row.isRowReadOnly)
+      dataService.saveUserPeriodData(currentUser.value.username, selectedPeriod.value, editableData)
+    }
     
     setTimeout(() => {
       // Reset modified flags and mark new rows as saved
@@ -663,313 +770,52 @@ const handleSaveChanges = () => {
 }
 
 const handleGenerateReport = () => {
-  try {
-    // Use the currently selected period from the UI, not the date-based detection
-    const currentQuarter = selectedPeriod.value
-    const previousQuarter = getPreviousCustomQuarter(currentQuarter)
-    
-    console.log('=== Report Generation Debug ===')
-    console.log('Selected Quarter (UI):', currentQuarter)
-    console.log('Previous Quarter:', previousQuarter)
-    
-    // Load data for both quarters
-    const currentData = dataService.loadPeriodData(currentQuarter)
-    const previousData = previousQuarter ? dataService.loadPeriodData(previousQuarter) : []
-    
-    console.log('Current Data Length:', currentData.length)
-    console.log('Previous Data Length:', previousData.length)
-    
-    // Option 1: Always generate CSV (like before) - comment out the dialog section and uncomment this
-    // const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
-    // downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
-    // notificationService.success(
-    //   t('businessQuarters.reportGenerated'),
-    //   `Detailed comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with full analysis.`
-    // )
-    
-    // Option 2: Ask user for format choice
-    const userChoice = confirm(
-      'Quarter Comparison Report Options:\n\n' +
-      '✅ OK = Excel format with REAL yellow highlighting (xlsx-js-style)\n' +
-      '❌ Cancel = CSV format with text indicators\n\n' +
-      'Both formats include: Summary, Changes Analysis, Detailed Sections, Modified Records\n' +
-      'Excel now uses xlsx-js-style library for actual cell highlighting!'
-    )
-    
-    if (userChoice) {
-      // Generate Excel file with highlighting
-      generateExcelReport(currentData, previousData, currentQuarter, previousQuarter)
-    } else {
-      // Generate CSV report with full detailed comparison (like before)
-      const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
-      downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
-      
-      notificationService.success(
-        t('businessQuarters.reportGenerated'),
-        `Detailed CSV comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with full analysis and [CHANGED] indicators.`
-      )
-    }
-  } catch (error) {
-    console.error('Report generation failed:', error)
-    notificationService.error(
-      t('businessQuarters.reportGenerationFailed'), 
-      t('businessQuarters.reportGenerationFailedDesc')
-    )
-  }
+  // Open the report modal for user to choose report options
+  reportModalState.value.isOpen = true
 }
 
-// Helper function to generate Excel file with yellow highlighting
-const generateExcelReport = (
-  currentData: BusinessQuarterRow[], 
-  previousData: BusinessQuarterRow[],
-  currentQuarter: string,
-  previousQuarter: string | null
-) => {
+// Handle XLSX upload
+const handleXlsxUpload = (uploadedData: any[]) => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Import Data', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+    )
+    return
+  }
+
   try {
-    // Create a new workbook
-    const workbook = XLSX.utils.book_new()
+    // Cast the uploaded data to BusinessQuarterRow format
+    // The uploaded data should already have the correct structure from the XLSX modal
+    const businessQuarterRows = uploadedData as BusinessQuarterRow[]
     
-    // Prepare data for Excel
-    const excelData = prepareExcelData(currentData, previousData, currentQuarter, previousQuarter)
-    
-    // Create worksheet from data
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData.values)
-    
-    // Apply cell styles for highlighting
-    applyExcelStyles(worksheet, excelData.styles)
-    
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Quarter Comparison')
-    
-    // Generate file and download
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-    downloadExcelFile(excelBuffer, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.xlsx`)
+    // Add uploaded data to the table
+    tableData.value.push(...businessQuarterRows)
     
     notificationService.success(
-      t('businessQuarters.reportGenerated'),
-      `Excel comparison report for ${currentQuarter} vs ${previousQuarter || 'N/A'} has been downloaded with REAL yellow cell highlighting using xlsx-js-style!`
+      'Data Imported Successfully',
+      `${businessQuarterRows.length} rows have been imported from Excel. Please review the data and click 'Save Changes' to persist.`
     )
   } catch (error) {
-    console.error('Excel generation failed:', error)
+    console.error('XLSX upload error:', error)
     notificationService.error(
-      'Excel Generation Failed',
-      'Failed to generate Excel file. Falling back to CSV export.'
+      'Import Failed', 
+      'Failed to import data from Excel file. Please check the file format and try again.'
     )
-    
-    // Fallback to CSV
-    const csvContent = generateComparisonCSV(currentData, previousData, currentQuarter, previousQuarter)
-    downloadCSVFile(csvContent, `Quarter-Comparison-Report-${currentQuarter.replace(/\s/g, '-')}.csv`)
   }
 }
 
-// Helper function to prepare Excel data and track styles
-const prepareExcelData = (
-  currentData: BusinessQuarterRow[], 
-  previousData: BusinessQuarterRow[],
-  currentQuarter: string,
-  previousQuarter: string | null
-) => {
-  const values: any[][] = []
-  const styles: { [key: string]: any } = {}
-  
-  const headers = [
-    'Asset Code', 'Entity Name (English)', 'Entity Name (Arabic)',
-    'CR Number', 'MOI Number', 'Country', 'Ownership %',
-    'Acquisition Date', 'Direct Parent', 'Ultimate Parent',
-    'Investment Type', 'Ownership Structure', 'Principal Activities', 'Currency'
-  ]
-  
-  const fieldKeys = [
-    'assetCode', 'entityNameEnglish', 'entityNameArabic',
-    'commercialRegistrationNumber', 'moiNumber', 'countryOfIncorporation',
-    'ownershipPercentage', 'acquisitionDisposalDate', 'directParentEntity',
-    'ultimateParentEntity', 'investmentRelationshipType', 'ownershipStructure',
-    'principalActivities', 'currency'
-  ]
-  
-  // Title and metadata
-  values.push(['Quarter Comparison Report'])
-  values.push([`Selected Quarter: ${currentQuarter}`])
-  values.push([`Previous Quarter: ${previousQuarter || 'N/A (First quarter of data)'}`])
-  values.push([`Generated on: ${new Date().toLocaleString()}`])
-  values.push([]) // Empty row
-  
-  // Summary Statistics
-  values.push(['=== SUMMARY ==='])
-  values.push([`Selected Quarter Records: ${currentData.length}`])
-  values.push([`Previous Quarter Records: ${previousData.length}`])
-  values.push([`Net Change: ${currentData.length - previousData.length}`])
-  values.push([]) // Empty row
-  
-  // Changes Analysis
-  const changes = analyzeChanges(currentData, previousData)
-  values.push(['=== CHANGES ANALYSIS ==='])
-  values.push([`New Records: ${changes.added.length}`])
-  values.push([`Modified Records: ${changes.modified.length}`])
-  values.push([`Removed Records: ${changes.removed.length}`])
-  values.push([]) // Empty row
-  
-  // Selected Quarter Data Section
-  values.push([`=== ${currentQuarter.toUpperCase()} DATA ===`])
-  values.push(headers)
-  
-  // Add current quarter data with highlighting
-  currentData.forEach((row) => {
-    const dataRow: any[] = []
-    
-    // ===== FIXED: row index of the row we are about to push =====
-    const rowIndex = values.length   // ← this *will be* the row number in the sheet
-    // ===========================================================
-    
-    // Find matching row in previous data
-    const matchingRow = previousData.find(prevRow => 
-      prevRow.entityNameEnglish === row.entityNameEnglish &&
-      prevRow.commercialRegistrationNumber === row.commercialRegistrationNumber
-    )
-    
-    fieldKeys.forEach((fieldKey, colIndex) => {
-      const currentValue = (row as any)[fieldKey]
-      const displayValue = fieldKey === 'ownershipPercentage' 
-        ? (currentValue?.toString() || '0')
-        : (currentValue || '')
-      
-      dataRow.push(displayValue)
-      
-      // Track cells that need highlighting
-      if (matchingRow) {
-        const previousValue = (matchingRow as any)[fieldKey]
-        if (currentValue !== previousValue) {
-          // Mark this cell for yellow highlighting - use rowIndex, not currentRow
-          const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
-          styles[cellAddress] = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } } }
-        }
-      } else {
-        // New record - highlight entire row in light yellow - use rowIndex, not currentRow
-        const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
-        styles[cellAddress] = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFACD' } } }
-      }
-    })
-    
-    values.push(dataRow)  // <- after we're done styling
-  })
-  
-  values.push([]) // Empty row
-  
-  // Previous Quarter Data Section (if exists)
-  if (previousData.length > 0) {
-    values.push([`=== ${(previousQuarter || 'PREVIOUS').toUpperCase()} DATA ===`])
-    values.push(headers)
-    
-    // Add previous quarter data
-    previousData.forEach((row) => {
-      const dataRow: any[] = []
-      
-      fieldKeys.forEach((fieldKey) => {
-        const value = (row as any)[fieldKey]
-        const displayValue = fieldKey === 'ownershipPercentage' 
-          ? (value?.toString() || '0')
-          : (value || '')
-        dataRow.push(displayValue)
-      })
-      
-      values.push(dataRow)
-    })
-    
-    values.push([]) // Empty row
-  }
-  
-  // Modified Records Details
-  if (changes.modified.length > 0) {
-    values.push(['=== MODIFIED RECORDS (Changed between quarters) ==='])
-    changes.modified.forEach(change => {
-      values.push([`Entity: ${change.current.entityNameEnglish}`])
-      values.push(['Field Changes:'])
-      change.changes.forEach(fieldChange => {
-        values.push([`  ${fieldChange.field}: "${fieldChange.previousValue}" → "${fieldChange.currentValue}"`])
-      })
-      values.push([]) // Empty row
-    })
-  }
-  
-  // New Records Section
-  if (changes.added.length > 0) {
-    values.push(['=== NEW RECORDS (Added in Selected Quarter) ==='])
-    values.push(headers)
-    changes.added.forEach((row) => {
-      const dataRow = fieldKeys.map(fieldKey => {
-        const value = (row as any)[fieldKey]
-        return fieldKey === 'ownershipPercentage' 
-          ? (value?.toString() || '0')
-          : (value || '')
-      })
-      values.push(dataRow)
-    })
-    values.push([]) // Empty row
-  }
-  
-  // Removed Records Section
-  if (changes.removed.length > 0) {
-    values.push(['=== REMOVED RECORDS (Present in Previous Quarter Only) ==='])
-    values.push(headers)
-    changes.removed.forEach((row) => {
-      const dataRow = fieldKeys.map(fieldKey => {
-        const value = (row as any)[fieldKey]
-        return fieldKey === 'ownershipPercentage' 
-          ? (value?.toString() || '0')
-          : (value || '')
-      })
-      values.push(dataRow)
-    })
-  }
-  
-  return { values, styles }
+// Report modal handlers
+const closeReportModal = () => {
+  reportModalState.value.isOpen = false
 }
 
-// Helper function to apply styles to Excel worksheet
-const applyExcelStyles = (worksheet: any, styles: { [key: string]: any }) => {
-  // Note: Using xlsx-js-style library for full styling support
-  
-  console.log('=== Excel Styles Debug ===')
-  console.log('Total styles to apply:', Object.keys(styles).length)
-  console.log('Style addresses:', Object.keys(styles))
-  console.log('Sample style object:', styles[Object.keys(styles)[0]])
-  
-  Object.keys(styles).forEach(cellAddress => {
-    if (worksheet[cellAddress]) {
-      if (!worksheet[cellAddress].s) {
-        worksheet[cellAddress].s = {}
-      }
-      Object.assign(worksheet[cellAddress].s, styles[cellAddress])
-    }
-  })
-  
-  // Quick sanity check - verify styles are attached
-  const sampleCells = ['A18', 'A19', 'B18', 'B19']
-  console.log('Sample cell styles after application:')
-  sampleCells.forEach(cell => {
-    if (worksheet[cell]?.s) {
-      console.log(`${cell}:`, worksheet[cell].s)
-    }
-  })
-  console.log('=== End Excel Styles Debug ===')
-}
-
-// Helper function to download Excel file
-const downloadExcelFile = (buffer: ArrayBuffer, filename: string) => {
-  const blob = new Blob([buffer], { 
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-  })
-  const link = document.createElement('a')
-  
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', filename)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+const handleReportGenerated = (success: boolean) => {
+  if (success) {
+    console.log('Report generated successfully')
+  } else {
+    console.log('Report generation failed')
   }
 }
 
@@ -1379,9 +1225,9 @@ const handleModalSubmit = (data: Record<string, any>) => {
         ownershipPercentage: data.ownershipPercentage || 0,
         acquisitionDisposalDate: data.acquisitionDisposalDate || undefined,
         directParentEntity: data.directParentEntity || '',
-        ultimateParentEntity: 'Direct to PIF',
+        ultimateParentEntity: 'PIF',
         investmentRelationshipType: data.investmentRelationshipType || '',
-        ownershipStructure: data.ownershipStructure || 'Direct to PIF',
+        ownershipStructure: data.ownershipStructure || 'PIF',
         principalActivities: data.principalActivities || '',
         isModified: false,
         isNewRow: false
@@ -1444,22 +1290,46 @@ const handleCopyData = (fromPeriod: string, _data: any[]) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  // Initialize data from localStorage
+onMounted(async () => {
+  // Initialize authentication first
+  await authStore.initAuth()
+  
+  // Then initialize data based on authenticated user
   initializeData()
 })
 
 // Initialize data from localStorage with proper error handling
 const initializeData = () => {
   try {
-    // Initialize localStorage with default data if needed
+    if (!currentUser.value?.username) {
+      console.warn('No authenticated user found')
+      return
+    }
+
+    // Initialize user-specific data if it doesn't exist
+    dataService.initializeUserData(currentUser.value.username)
+    
+    // Initialize legacy data structure (for backward compatibility)
     const allData = dataService.initializeData()
     
     // Update allQuarterData for the modal to work properly
     allQuarterData.value = allData
     
-    // Load data for the default period
-    const defaultPeriodData = dataService.loadPeriodData(selectedPeriod.value)
+    // Load user-specific data for the default period
+    let defaultPeriodData: BusinessQuarterRow[] = []
+    
+    if (isAdmin.value) {
+      // For admin users, load combined data (both admin and company data)
+      console.log('=== INITIALIZING COMBINED DATA FOR ADMIN ===')
+      defaultPeriodData = dataService.getCombinedDataForAdmin(selectedPeriod.value)
+      console.log('Admin initialized combined data length:', defaultPeriodData.length)
+    } else {
+      // For company users, load only their own data
+      console.log('=== INITIALIZING COMPANY DATA ONLY ===')
+      defaultPeriodData = dataService.loadUserPeriodData(currentUser.value.username, selectedPeriod.value)
+      console.log('Company initialized data length:', defaultPeriodData.length)
+    }
+    
     tableData.value = defaultPeriodData
     
     if (defaultPeriodData[0]) {
@@ -1468,8 +1338,10 @@ const initializeData = () => {
     }
     console.log('=== END DEBUG ===')
     
-    console.log('Initialized data from localStorage:', {
-      totalPeriods: Object.keys(allData).length,
+    console.log('Initialized user-specific data:', {
+      username: currentUser.value.username,
+      userRole: currentUser.value.role,
+      isAdmin: isAdmin.value,
       currentPeriodRecords: defaultPeriodData.length,
       availablePeriods: dataService.getAvailablePeriods()
     })
@@ -1501,6 +1373,93 @@ const resetDataToDefault = () => {
 if (typeof window !== 'undefined') {
   (window as any).resetDataToDefault = resetDataToDefault
   
+  // Expose user data reset for testing
+  ;(window as any).resetUserData = () => {
+    try {
+      dataService.resetUserData()
+      console.log('User data reset successfully. Please refresh the page or re-login to see the new sample data.')
+    } catch (error) {
+      console.error('Failed to reset user data:', error)
+    }
+  }
+  
+  // Expose method to clear save status for testing
+  ;(window as any).clearSaveStatus = () => {
+    try {
+      dataService.clearSaveStatus()
+      console.log('Save status cleared successfully. Users will now load from previous quarter again.')
+    } catch (error) {
+      console.error('Failed to clear save status:', error)
+    }
+  }
+  
+  // Expose method to test combined data loading
+  ;(window as any).testCombinedData = () => {
+    try {
+      console.log('=== Testing Combined Data Loading ===')
+      console.log('Current user:', currentUser.value?.username)
+      console.log('Is admin:', isAdmin.value)
+      
+      // Test individual data loading
+      const adminData = dataService.loadUserPeriodData('PIF_SubmitIQ', 'First Half 2025')
+      const companyData = dataService.loadUserPeriodData('Company', 'First Half 2025')
+      console.log('Direct admin data length:', adminData.length)
+      console.log('Direct company data length:', companyData.length)
+      
+      // Test combined data loading
+      const combinedData = dataService.getCombinedDataForAdmin('First Half 2025')
+      console.log('Combined data result length:', combinedData.length)
+      console.log('Combined data entities:', combinedData.map(row => row.entityNameEnglish))
+      console.log('Combined data sources:', combinedData.map(row => row.dataSource))
+      
+      return {
+        adminData: adminData.length,
+        companyData: companyData.length,
+        combinedData: combinedData.length,
+        entities: combinedData.map(row => row.entityNameEnglish),
+        sources: combinedData.map(row => row.dataSource)
+      }
+    } catch (error) {
+      console.error('Failed to test combined data:', error)
+      return { error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+  
+  // Expose method to force reload current user data
+  ;(window as any).reloadCurrentUserData = () => {
+    try {
+      console.log('=== Reloading Current User Data ===')
+      if (!currentUser.value?.username) {
+        console.error('No current user found')
+        return
+      }
+      
+      // Force re-initialize data
+      dataService.initializeUserData(currentUser.value.username)
+      
+      // Reload the table data
+      let newData: BusinessQuarterRow[] = []
+      if (isAdmin.value) {
+        newData = dataService.getCombinedDataForAdmin(selectedPeriod.value)
+      } else {
+        newData = dataService.loadUserPeriodData(currentUser.value.username, selectedPeriod.value)
+      }
+      
+      tableData.value = newData
+      console.log('Reloaded data length:', newData.length)
+      console.log('Reloaded entities:', newData.map(row => row.entityNameEnglish))
+      
+      return {
+        userType: isAdmin.value ? 'admin' : 'company',
+        dataLength: newData.length,
+        entities: newData.map(row => row.entityNameEnglish)
+      }
+    } catch (error) {
+      console.error('Failed to reload user data:', error)
+      return { error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+  
   // Also expose the report generation functions for testing
   ;(window as any).testQuarterDetection = () => {
     console.log('=== Quarter Detection Test ===')
@@ -1514,6 +1473,131 @@ if (typeof window !== 'undefined') {
     console.log('Date-based Quarter:', dateBasedQuarter)
     
     return { currentQuarter, previousQuarter, dateBasedQuarter }
+  }
+  
+  // Add debugging method to test fallback logic
+  ;(window as any).testFallbackLogic = (username: string, period: string) => {
+    console.log(`=== Testing Fallback Logic for ${username} in ${period} ===`)
+    
+    // Check save status
+    const hasSaved = dataService.hasUserSavedToQuarter(username, period)
+    console.log(`${username} has saved to ${period}:`, hasSaved)
+    
+    // Test fallback loading
+    const result = dataService.loadUserPeriodDataWithFallback(username, period)
+    console.log('Fallback result:', {
+      dataLength: result.data.length,
+      isFromPreviousQuarter: result.isFromPreviousQuarter,
+      previousQuarterSource: result.previousQuarterSource
+    })
+    
+    return result
+  }
+  
+  // Add debugging method to reset everything and test fresh
+  ;(window as any).resetAllDataAndTest = () => {
+    console.log('=== Resetting All Data and Testing ===')
+    
+    // Clear all data
+    dataService.clearAllData()
+    
+    // Reinitialize for current user
+    if (currentUser.value?.username) {
+      dataService.initializeUserData(currentUser.value.username)
+      
+      // Test loading for current period
+      handlePeriodChange(selectedPeriod.value, 1, 2025)
+      
+      console.log('Data reset and reloaded. Current table data length:', tableData.value.length)
+      console.log('Has data from previous quarter:', hasDataFromPreviousQuarter.value)
+    }
+    
+    return {
+      username: currentUser.value?.username,
+      period: selectedPeriod.value,
+      dataLength: tableData.value.length,
+      hasDataFromPreviousQuarter: hasDataFromPreviousQuarter.value
+    }
+  }
+  
+  // Add debugging method to test the specific admin data loading behavior
+  ;(window as any).testAdminDataLoading = (targetPeriod?: string) => {
+    console.log('=== Testing Admin Data Loading Behavior ===')
+    const testPeriod = targetPeriod || 'Quarter 3 2025'
+    
+    if (currentUser.value?.username !== 'PIF_SubmitIQ') {
+      console.error('This test only works for PIF_SubmitIQ user. Current user:', currentUser.value?.username)
+      return { error: 'Must be logged in as PIF_SubmitIQ user' }
+    }
+    
+    console.log(`Testing data loading for period: ${testPeriod}`)
+    
+    // Test the combined data loading
+    const combinedData = dataService.getCombinedDataForAdmin(testPeriod)
+    
+    const adminRows = combinedData.filter(row => row.dataSource === 'admin')
+    const companyRows = combinedData.filter(row => row.dataSource === 'company')
+    
+    console.log('=== TEST RESULTS ===')
+    console.log(`Total combined data: ${combinedData.length} rows`)
+    console.log(`Admin (PIF_SubmitIQ) rows: ${adminRows.length}`)
+    console.log(`Company rows: ${companyRows.length}`)
+    console.log('Admin rows are read-only:', adminRows.map(r => r.isRowReadOnly))
+    console.log('Company rows are read-only:', companyRows.map(r => r.isRowReadOnly))
+    console.log('Admin rows from previous quarter:', adminRows.map(r => r.isFromPreviousQuarter))
+    console.log('Company rows from previous quarter:', companyRows.map(r => r.isFromPreviousQuarter))
+    
+    return {
+      testPeriod,
+      totalRows: combinedData.length,
+      adminRows: adminRows.length,
+      companyRows: companyRows.length,
+      adminReadOnly: adminRows.every(r => !r.isRowReadOnly),
+      companyReadOnly: companyRows.every(r => r.isRowReadOnly),
+      adminFromPrevious: adminRows.some(r => r.isFromPreviousQuarter),
+      companyFromPrevious: companyRows.some(r => r.isFromPreviousQuarter)
+    }
+  }
+  
+  // Add debugging method to test save functionality and verify read-only filtering
+  ;(window as any).testSaveFiltering = () => {
+    if (currentUser.value?.username !== 'PIF_SubmitIQ') {
+      console.error('This test only works for PIF_SubmitIQ user. Current user:', currentUser.value?.username)
+      return { error: 'Must be logged in as PIF_SubmitIQ user' }
+    }
+    
+    console.log('=== Testing Save Filtering ===')
+    console.log('Current table data length:', tableData.value.length)
+    
+    const readOnlyRows = tableData.value.filter(row => row.isRowReadOnly)
+    const editableRows = tableData.value.filter(row => !row.isRowReadOnly)
+    
+    console.log('Read-only rows (should NOT be saved):', readOnlyRows.length)
+    console.log('Editable rows (should be saved):', editableRows.length)
+    
+    readOnlyRows.forEach((row, index) => {
+      console.log(`Read-only row ${index + 1}:`, {
+        entity: row.entityNameEnglish,
+        dataSource: row.dataSource,
+        isRowReadOnly: row.isRowReadOnly
+      })
+    })
+    
+    editableRows.forEach((row, index) => {
+      console.log(`Editable row ${index + 1}:`, {
+        entity: row.entityNameEnglish,
+        dataSource: row.dataSource,
+        isRowReadOnly: row.isRowReadOnly
+      })
+    })
+    
+    return {
+      totalRows: tableData.value.length,
+      readOnlyRows: readOnlyRows.length,
+      editableRows: editableRows.length,
+      readOnlyData: readOnlyRows.map(r => ({ entity: r.entityNameEnglish, source: r.dataSource })),
+      editableData: editableRows.map(r => ({ entity: r.entityNameEnglish, source: r.dataSource }))
+    }
   }
   
   ;(window as any).generateTestReport = handleGenerateReport

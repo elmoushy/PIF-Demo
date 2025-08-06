@@ -116,23 +116,42 @@ class TokenManager {
 // Main Auth Service (Demo Version)
 class AuthService {
   // Demo credentials
-  private DEMO_CREDENTIALS = {
-    username: 'PIF_SubmitIQ',
-    password: 'PIF_SubmitIQ123'
-  }
+  private DEMO_CREDENTIALS = [
+    {
+      username: 'PIF_SubmitIQ',
+      password: 'PIF_SubmitIQ123'
+    },
+    {
+      username: 'Company',
+      password: 'Company123'
+    }
+  ]
 
   // Demo user data
-  private DEMO_USER: User = {
-    id: 1,
-    username: 'PIF_SubmitIQ',
-    email: 'demo@pif-submitiq.com',
-    first_name: 'PIF',
-    last_name: 'SubmitIQ',
-    role: 'Administrator',
-    status: 'Accepted',
-    date_joined: new Date().toISOString(),
-    is_active: true
-  }
+  private DEMO_USERS: User[] = [
+    {
+      id: 1,
+      username: 'PIF_SubmitIQ',
+      email: 'demo@pif-submitiq.com',
+      first_name: 'PIF',
+      last_name: 'SubmitIQ',
+      role: 'Administrator',
+      status: 'Accepted',
+      date_joined: new Date().toISOString(),
+      is_active: true
+    },
+    {
+      id: 2,
+      username: 'Company',
+      email: 'company@example.com',
+      first_name: 'Company',
+      last_name: 'User',
+      role: 'Company',
+      status: 'Accepted',
+      date_joined: new Date().toISOString(),
+      is_active: true
+    }
+  ]
 
   // Demo delay to simulate network request
   private delay(ms: number): Promise<void> {
@@ -149,34 +168,45 @@ class AuthService {
         username_or_email: credentials.username_or_email,
         password: credentials.password
       },
-      expected: {
-        username: this.DEMO_CREDENTIALS.username,
-        password: this.DEMO_CREDENTIALS.password
-      }
+      expected: this.DEMO_CREDENTIALS
     })
 
-    // Check demo credentials with exact matching
-    const isUsernameMatch = credentials.username_or_email === this.DEMO_CREDENTIALS.username
-    const isPasswordMatch = credentials.password === this.DEMO_CREDENTIALS.password
+    // Find matching user credentials
+    const matchingCredential = this.DEMO_CREDENTIALS.find(cred => 
+      cred.username === credentials.username_or_email && 
+      cred.password === credentials.password
+    )
     
-    if (isUsernameMatch && isPasswordMatch) {
+    if (matchingCredential) {
+      // Find the corresponding user data
+      const matchingUser = this.DEMO_USERS.find(user => 
+        user.username === matchingCredential.username
+      )
+      
+      if (!matchingUser) {
+        throw new Error('User data not found')
+      }
+
       // Generate demo tokens
       const access = 'demo_access_token_' + Date.now()
       const refresh = 'demo_refresh_token_' + Date.now()
 
       // Store tokens and user data
       TokenManager.setTokens(access, refresh)
-      TokenManager.setUser(this.DEMO_USER)
+      TokenManager.setUser(matchingUser)
 
-      console.log('Demo login successful!')
+      console.log('Demo login successful for user:', matchingUser.username)
 
       return {
         access,
         refresh,
-        user: this.DEMO_USER
+        user: matchingUser
       }
     } else {
-      const errorMessage = `Invalid credentials. Expected Username: "${this.DEMO_CREDENTIALS.username}" and Password: "${this.DEMO_CREDENTIALS.password}"`
+      const validCredentials = this.DEMO_CREDENTIALS.map(cred => 
+        `Username: "${cred.username}" Password: "${cred.password}"`
+      ).join(' OR ')
+      const errorMessage = `Invalid credentials. Valid credentials: ${validCredentials}`
       console.error('Demo login failed:', errorMessage)
       throw new Error(errorMessage)
     }

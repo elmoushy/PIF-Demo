@@ -233,6 +233,7 @@ interface Props {
   columns: Column[]
   data?: Record<string, any>
   tableData?: Record<string, any>[] // All table data for validation purposes
+  userRole?: string // User role for conditional rendering ('Administrator' or 'Company')
 }
 
 const props = defineProps<Props>()
@@ -299,10 +300,20 @@ const investmentRelationshipOptions = [
   { value: 'Joint Venture of a JV', label: 'Joint Venture of a JV' }
 ]
 
-const ownershipStructureOptions = [
-  { value: 'Direct and In-Direct', label: 'Direct and In-Direct' },
-  { value: 'Direct to PIF', label: 'Direct to PIF' }
-]
+const ownershipStructureOptions = computed(() => {
+  if (props.userRole === 'Company') {
+    // For Company users: Show dropdown with Direct/In-direct options
+    return [
+      { value: 'Direct', label: 'Direct' },
+      { value: 'In-direct', label: 'In-direct' }
+    ]
+  } else {
+    // For Administrator (PIF_SubmitIQ): Hardcoded value "Direct to PIF"
+    return [
+      { value: 'Direct to PIF', label: 'Direct to PIF' }
+    ]
+  }
+})
 
 // Direct Parent Entity options - dynamically generated from existing Entity Names in the table
 const directParentEntityOptions = computed(() => {
@@ -345,10 +356,10 @@ const initializeFormData = () => {
           data[column.key] = 0
           break
         case 'ultimateParentEntity':
-          data[column.key] = 'Direct to PIF'
+          data[column.key] = 'PIF'
           break
         case 'ownershipStructure':
-          data[column.key] = 'Direct to PIF'
+          data[column.key] = 'PIF'
           break
         default:
           data[column.key] = ''

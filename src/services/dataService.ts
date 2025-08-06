@@ -39,6 +39,8 @@ export interface BusinessQuarterRow {
   isNewRow?: boolean
   isFromPreviousQuarter?: boolean // Flag to indicate data loaded from previous quarter
   previousQuarterSource?: string // Source quarter name
+  dataSource?: string // Data source ('admin' or 'company')
+  isRowReadOnly?: boolean // Flag to indicate if row is read-only
   createdAt?: string
   updatedAt?: string
 }
@@ -50,6 +52,8 @@ export interface QuarterData {
 class DataService {
   private readonly STORAGE_KEY = 'pif_business_quarters_data'
   private readonly BACKUP_KEY = 'pif_business_quarters_backup'
+  private readonly USER_DATA_KEY = 'pif_user_specific_data'
+  private readonly USER_SAVE_STATUS_KEY = 'pif_user_save_status' // Track which users have saved to which quarters
 
   /**
    * Initialize localStorage with default data if not exists
@@ -256,7 +260,9 @@ class DataService {
   clearAllData(): void {
     localStorage.removeItem(this.STORAGE_KEY)
     localStorage.removeItem(this.BACKUP_KEY)
-    console.log('All data cleared from localStorage')
+    localStorage.removeItem(this.USER_DATA_KEY) // Clear user-specific data too
+    localStorage.removeItem(this.USER_SAVE_STATUS_KEY) // Clear save status tracking
+    console.log('All data cleared from localStorage including save status')
   }
 
   /**
@@ -268,6 +274,23 @@ class DataService {
     this.saveAllData(defaultData)
     console.log('Data reset to default sample data')
     return defaultData
+  }
+
+  /**
+   * Reset user-specific data for testing
+   */
+  resetUserData(): void {
+    localStorage.removeItem(this.USER_DATA_KEY)
+    localStorage.removeItem(this.USER_SAVE_STATUS_KEY) // Also clear save status
+    console.log('User-specific data and save status cleared from localStorage')
+  }
+
+  /**
+   * Clear save status for all users (for testing purposes)
+   */
+  clearSaveStatus(): void {
+    localStorage.removeItem(this.USER_SAVE_STATUS_KEY)
+    console.log('Save status cleared from localStorage')
   }
 
   /**
@@ -305,7 +328,7 @@ class DataService {
   /**
    * Generate unique ID for new rows
    */
-  private generateId(): string {
+  generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
@@ -389,55 +412,421 @@ class DataService {
   }
 
   /**
-   * Get default sample data for initial setup
+   * Load user-specific data from localStorage
    */
-  private getDefaultData(): QuarterData {
+  loadUserData(username: string): QuarterData {
+    try {
+      const userData = localStorage.getItem(this.USER_DATA_KEY)
+      const allUserData = userData ? JSON.parse(userData) : {}
+      return allUserData[username] || {}
+    } catch (error) {
+      console.error('Error loading user data from localStorage:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Save user-specific data to localStorage
+   */
+  saveUserData(username: string, data: QuarterData): void {
+    try {
+      const userData = localStorage.getItem(this.USER_DATA_KEY)
+      const allUserData = userData ? JSON.parse(userData) : {}
+      allUserData[username] = data
+      localStorage.setItem(this.USER_DATA_KEY, JSON.stringify(allUserData))
+      console.log(`User data saved for ${username}`)
+    } catch (error) {
+      console.error('Error saving user data to localStorage:', error)
+      throw new Error('Failed to save user data.')
+    }
+  }
+
+  /**
+   * Load user and period specific data
+   */
+  loadUserPeriodData(username: string, period: string): BusinessQuarterRow[] {
+    const userData = this.loadUserData(username)
+    return userData[period] || []
+  }
+
+  /**
+   * Check if a user has saved data to a specific quarter
+   */
+  hasUserSavedToQuarter(username: string, period: string): boolean {
+    try {
+      const saveStatus = localStorage.getItem(this.USER_SAVE_STATUS_KEY)
+      const status = saveStatus ? JSON.parse(saveStatus) : {}
+      return !!(status[username] && status[username][period])
+    } catch (error) {
+      console.error('Error checking user save status:', error)
+      return false
+    }
+  }
+
+  /**
+   * Mark that a user has saved data to a specific quarter
+   */
+  markUserSavedToQuarter(username: string, period: string): void {
+    try {
+      const saveStatus = localStorage.getItem(this.USER_SAVE_STATUS_KEY)
+      const status = saveStatus ? JSON.parse(saveStatus) : {}
+      
+      if (!status[username]) {
+        status[username] = {}
+      }
+      status[username][period] = new Date().toISOString()
+      
+      localStorage.setItem(this.USER_SAVE_STATUS_KEY, JSON.stringify(status))
+      console.log(`Marked ${username} as saved to ${period}`)
+    } catch (error) {
+      console.error('Error marking user save status:', error)
+    }
+  }
+
+  /**
+   * Load user and period specific data with previous quarter fallback logic
+   */
+  loadUserPeriodDataWithFallback(username: string, period: string): {
+    data: BusinessQuarterRow[],
+    isFromPreviousQuarter: boolean,
+    previousQuarterSource?: string
+  } {
+    console.log(`=== Loading data for ${username} in ${period} ===`)
+    
+    // Check if user has saved to this quarter
+    const hasSavedToCurrentQuarter = this.hasUserSavedToQuarter(username, period)
+    console.log(`${username} has saved to ${period}:`, hasSavedToCurrentQuarter)
+    
+    if (hasSavedToCurrentQuarter) {
+      // User has saved to this quarter, load their saved data
+      const savedData = this.loadUserPeriodData(username, period)
+      console.log(`Loading saved data for ${username}: ${savedData.length} rows`)
+      return {
+        data: savedData,
+        isFromPreviousQuarter: false
+      }
+    } else {
+      // User hasn't saved to this quarter, load from previous quarter
+      const previousQuarter = this.getPreviousQuarter(period)
+      if (previousQuarter) {
+        const previousData = this.loadUserPeriodData(username, previousQuarter)
+        console.log(`Loading previous quarter data for ${username}: ${previousData.length} rows from ${previousQuarter}`)
+        
+        // Mark the data as from previous quarter and assign new IDs
+        const adaptedData = previousData.map((row: BusinessQuarterRow) => ({
+          ...row,
+          id: this.generateId(),
+          isModified: false,
+          isNewRow: true,
+          isFromPreviousQuarter: true,
+          previousQuarterSource: previousQuarter,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }))
+        
+        return {
+          data: adaptedData,
+          isFromPreviousQuarter: true,
+          previousQuarterSource: previousQuarter
+        }
+      } else {
+        console.log(`No previous quarter found for ${period}`)
+        return {
+          data: [],
+          isFromPreviousQuarter: false
+        }
+      }
+    }
+  }
+
+  /**
+   * Save user and period specific data
+   */
+  saveUserPeriodData(username: string, period: string, data: BusinessQuarterRow[]): void {
+    // Filter out read-only rows to prevent accidental saving of other users' data
+    // This is an extra layer of protection
+    const editableDataOnly = data.filter(row => !row.isRowReadOnly)
+    
+    if (editableDataOnly.length !== data.length) {
+      console.warn(`Filtered out ${data.length - editableDataOnly.length} read-only rows from save operation for ${username}`)
+    }
+    
+    const userData = this.loadUserData(username)
+    userData[period] = editableDataOnly.map(row => ({
+      ...row,
+      updatedAt: new Date().toISOString(),
+      dataSource: username === 'PIF_SubmitIQ' ? 'admin' : 'company', // Ensure correct data source
+      isRowReadOnly: false // When saving user's own data, it should never be read-only
+    }))
+    this.saveUserData(username, userData)
+    
+    // Mark that the user has saved to this quarter
+    this.markUserSavedToQuarter(username, period)
+    console.log(`Saved ${editableDataOnly.length} editable rows for ${username} to ${period}`)
+  }
+
+  /**
+   * Get combined data for admin users (both admin and company data)
+   */
+  getCombinedDataForAdmin(period: string): BusinessQuarterRow[] {
+    console.log('=== DEBUG: getCombinedDataForAdmin called ===')
+    console.log('Period:', period)
+    
+    // Load admin's data with fallback logic (can load from previous quarter)
+    const adminResult = this.loadUserPeriodDataWithFallback('PIF_SubmitIQ', period)
+    console.log('Admin data length:', adminResult.data.length)
+    console.log('Admin data is from previous quarter:', adminResult.isFromPreviousQuarter)
+    
+    // Load company's data ONLY from current quarter (no fallback to previous quarter)
+    // Company data should only show what's been saved to current quarter
+    const companyCurrentData = this.loadUserPeriodData('Company', period)
+    console.log('Company current quarter data length:', companyCurrentData.length)
+    console.log('Company data loaded from current quarter only (no fallback)')
+    
+    // Tag admin data as admin source
+    const taggedAdminData = adminResult.data.map((row: BusinessQuarterRow) => ({ 
+      ...row, 
+      dataSource: 'admin',
+      isRowReadOnly: false // Admin can always edit their own data
+    }))
+    
+    // Tag company data as read-only (always read-only for admin user)
+    const taggedCompanyData = companyCurrentData.map((row: BusinessQuarterRow) => ({ 
+      ...row, 
+      dataSource: 'company',
+      isRowReadOnly: true // Company data is always read-only for admin
+    }))
+    
+    const combinedData = [...taggedAdminData, ...taggedCompanyData]
+    console.log('Combined data length:', combinedData.length)
+    console.log('Combined data with read-only flags:', combinedData.map(row => ({ 
+      entity: row.entityNameEnglish, 
+      source: row.dataSource, 
+      readOnly: row.isRowReadOnly 
+    })))
+    console.log('=== END DEBUG: getCombinedDataForAdmin ===')
+    
+    return combinedData
+  }
+
+  /**
+   * Initialize user-specific sample data
+   */
+  initializeUserData(username: string): void {
+    console.log('=== DEBUG: initializeUserData called ===')
+    console.log('Username:', username)
+    
+    const existingData = this.loadUserData(username)
+    console.log('Existing data periods:', Object.keys(existingData))
+    
+    if (Object.keys(existingData).length === 0) {
+      console.log('No existing data found, initializing sample data for:', username)
+      
+      if (username === 'Company') {
+        const companyData = this.getCompanySampleData()
+        console.log('Company sample data periods:', Object.keys(companyData))
+        console.log('Company sample data First Half 2025 length:', companyData['First Half 2025']?.length || 0)
+        this.saveUserData(username, companyData)
+        
+        // Mark that Company has saved to First Half 2025 (since we just initialized sample data)
+        this.markUserSavedToQuarter(username, 'First Half 2025')
+        console.log('Marked Company as saved to First Half 2025')
+      } else if (username === 'PIF_SubmitIQ') {
+        const adminData = this.getAdminSampleData()
+        console.log('Admin sample data periods:', Object.keys(adminData))
+        console.log('Admin sample data First Half 2025 length:', adminData['First Half 2025']?.length || 0)
+        this.saveUserData(username, adminData)
+        
+        // Mark that PIF_SubmitIQ has saved to First Half 2025 (since we just initialized sample data)
+        this.markUserSavedToQuarter(username, 'First Half 2025')
+        console.log('Marked PIF_SubmitIQ as saved to First Half 2025')
+        
+        // IMPORTANT: Also ensure Company user data is initialized
+        // Admin users need to see Company data too
+        console.log('Admin user detected - also initializing Company user data...')
+        const companyData = this.loadUserData('Company')
+        if (Object.keys(companyData).length === 0) {
+          console.log('Company data not found, initializing it for Admin to access...')
+          const companyDataSample = this.getCompanySampleData()
+          this.saveUserData('Company', companyDataSample)
+          // Also mark Company as saved to First Half 2025
+          this.markUserSavedToQuarter('Company', 'First Half 2025')
+          console.log('Company data initialized for Admin access and marked as saved')
+        } else {
+          console.log('Company data already exists - Admin can access it')
+        }
+      }
+    } else {
+      console.log('User already has data, skipping initialization')
+      
+      // Mark existing periods as saved for this user
+      const existingPeriods = Object.keys(existingData)
+      existingPeriods.forEach(period => {
+        if (!this.hasUserSavedToQuarter(username, period)) {
+          this.markUserSavedToQuarter(username, period)
+          console.log(`Marked ${username} as saved to existing period: ${period}`)
+        }
+      })
+      
+      // If this is an admin user, also ensure Company data exists
+      if (username === 'PIF_SubmitIQ') {
+        console.log('Admin user with existing data - checking Company data availability...')
+        const companyData = this.loadUserData('Company')
+        if (Object.keys(companyData).length === 0) {
+          console.log('Company data missing - initializing for Admin access...')
+          const companyDataSample = this.getCompanySampleData()
+          this.saveUserData('Company', companyDataSample)
+          // Also mark Company as saved to First Half 2025
+          this.markUserSavedToQuarter('Company', 'First Half 2025')
+          console.log('Company data initialized for Admin access and marked as saved')
+        } else {
+          // Mark existing Company periods as saved
+          const companyPeriods = Object.keys(companyData)
+          companyPeriods.forEach(period => {
+            if (!this.hasUserSavedToQuarter('Company', period)) {
+              this.markUserSavedToQuarter('Company', period)
+              console.log(`Marked Company as saved to existing period: ${period}`)
+            }
+          })
+        }
+      }
+    }
+    
+    console.log('=== END DEBUG: initializeUserData ===')
+  }
+
+  /**
+   * Get Company user sample data (3 fake rows for first half 2025)
+   */
+  private getCompanySampleData(): QuarterData {
+    return {
+      'First Half 2025': [
+        {
+          id: this.generateId(),
+          entityNameEnglish: 'neom', // Matches dropdown value
+          entityNameArabic: 'neom-ar', // Matches dropdown value
+          commercialRegistrationNumber: 'CT2025001',
+          moiNumber: '',
+          countryOfIncorporation: 'USA',
+          ownershipPercentage: 45,
+          acquisitionDisposalDate: '2025-02-15',
+          directParentEntity: '', // No parent - top level entity
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Subsidiary',
+          ownershipStructure: 'Direct',
+          principalActivities: 'Technology solutions and software development',
+          currency: 'USD',
+          isModified: false,
+          isNewRow: false,
+          dataSource: 'company',
+          createdAt: new Date('2025-02-15').toISOString(),
+          updatedAt: new Date('2025-02-15').toISOString()
+        },
+        {
+          id: this.generateId(),
+          entityNameEnglish: 'red-sea', // Matches dropdown value
+          entityNameArabic: 'red-sea-ar', // Matches dropdown value
+          commercialRegistrationNumber: 'GE2025002',
+          moiNumber: '',
+          countryOfIncorporation: 'DEU',
+          ownershipPercentage: 60,
+          acquisitionDisposalDate: '2025-04-10',
+          directParentEntity: 'neom', // References first entity
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Joint venture',
+          ownershipStructure: 'In-direct',
+          principalActivities: 'Renewable energy development and clean technology',
+          currency: 'EUR',
+          isModified: false,
+          isNewRow: false,
+          dataSource: 'company',
+          createdAt: new Date('2025-04-10').toISOString(),
+          updatedAt: new Date('2025-04-10').toISOString()
+        },
+        {
+          id: this.generateId(),
+          entityNameEnglish: 'qiddiya', // Matches dropdown value
+          entityNameArabic: 'qiddiya-ar', // Matches dropdown value
+          commercialRegistrationNumber: 'FS2025003',
+          moiNumber: '',
+          countryOfIncorporation: 'GBR',
+          ownershipPercentage: 30,
+          acquisitionDisposalDate: '2025-06-01',
+          directParentEntity: 'red-sea', // References second entity
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Associate',
+          ownershipStructure: 'Direct',
+          principalActivities: 'Investment banking and financial advisory services',
+          currency: 'GBP',
+          isModified: false,
+          isNewRow: false,
+          dataSource: 'company',
+          createdAt: new Date('2025-06-01').toISOString(),
+          updatedAt: new Date('2025-06-01').toISOString()
+        }
+      ]
+    }
+  }
+
+  /**
+   * Get Admin user sample data
+   */
+  private getAdminSampleData(): QuarterData {
     return {
       'First Half 2025': [
         {
           id: this.generateId(),
           assetCode: 'SA001',
-          entityNameEnglish: 'saudi-aramco',
-          entityNameArabic: 'aramco-ar',
+          entityNameEnglish: 'saudi-aramco', // Matches dropdown value
+          entityNameArabic: 'aramco-ar', // Matches dropdown value
           commercialRegistrationNumber: '2052101150',
           moiNumber: '7001234567',
           countryOfIncorporation: 'SAU',
           ownershipPercentage: 100,
           acquisitionDisposalDate: '2025-01-15',
-          directParentEntity: 'sabic',
-          ultimateParentEntity: 'Direct to PIF',
-          investmentRelationshipType: 'subsidiary',
-          ownershipStructure: 'public-listed',
+          directParentEntity: '', // No parent - top level entity
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Subsidiary',
+          ownershipStructure: 'Direct to PIF',
           principalActivities: 'Oil and gas exploration, production, refining, and marketing',
           currency: 'SAR',
           isModified: false,
           isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          dataSource: 'admin',
+          createdAt: new Date('2025-01-15').toISOString(),
+          updatedAt: new Date('2025-01-15').toISOString()
         },
         {
           id: this.generateId(),
           assetCode: 'SA002',
-          entityNameEnglish: 'sabic',
-          entityNameArabic: 'sabic-ar',
+          entityNameEnglish: 'sabic', // Matches dropdown value
+          entityNameArabic: 'sabic-ar', // Matches dropdown value
           commercialRegistrationNumber: '2052101151',
           moiNumber: '7001234568',
-          countryOfIncorporation: 'ARE',
+          countryOfIncorporation: 'SAU',
           ownershipPercentage: 75,
           acquisitionDisposalDate: '2025-02-20',
-          directParentEntity: 'saudi-aramco',
-          ultimateParentEntity: 'Direct to PIF',
-          investmentRelationshipType: 'associate',
-          ownershipStructure: 'private-limited',
+          directParentEntity: 'saudi-aramco', // References first entity
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Joint venture',
+          ownershipStructure: 'Direct to PIF',
           principalActivities: 'Petrochemicals, chemicals, and fertilizers manufacturing',
-          currency: 'AED',
+          currency: 'SAR',
           isModified: false,
           isNewRow: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          dataSource: 'admin',
+          createdAt: new Date('2025-02-20').toISOString(),
+          updatedAt: new Date('2025-02-20').toISOString()
         }
       ]
     }
+  }
+
+  /**
+   * Get default sample data for initial setup (Legacy method - now points to admin data)
+   */
+  private getDefaultData(): QuarterData {
+    return this.getAdminSampleData()
   }
 }
 
