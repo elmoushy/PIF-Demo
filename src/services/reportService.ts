@@ -13,6 +13,7 @@ export interface ReportOptions {
   currentPeriod: string
   includeAllCompanies?: boolean // For Administrator: true = consolidated, false = specific company
   targetCompany?: string // For Administrator company-specific reports
+  reportType?: 'full-data' | 'change-tracking' // New property for report type
 }
 
 export interface PeriodComparisonData {
@@ -103,9 +104,13 @@ class ReportService {
     const styles: { [key: string]: any } = {}
     
     // Report Header
+    const reportTypeDisplay = options.reportType === 'full-data' ? 'Full Data Report' : 'Change Tracking Report'
+    const scopeDisplay = options.includeAllCompanies ? 'Consolidated (All Companies)' : 'Company-Specific'
+    
     values.push(['Business Quarters Report'])
     values.push([`Generated for: ${options.userRole === 'Administrator' ? 'Administrator (PIF_SubmitIQ)' : options.username}`])
-    values.push([`Report Type: ${options.includeAllCompanies ? 'Consolidated (All Companies)' : 'Company-Specific'}`])
+    values.push([`Report Format: ${reportTypeDisplay}`])
+    values.push([`Report Scope: ${scopeDisplay}`])
     values.push([`Current Period: ${data.currentPeriod}`])
     values.push([`Previous Period: ${data.previousPeriod || 'N/A'}`])
     values.push([`Generated on: ${new Date().toLocaleString()}`])
@@ -116,11 +121,11 @@ class ReportService {
     values.push(headers)
     
     // Data rows with period comparison
-    const dataRows = this.createDataRows(data, styles, values.length)
+    const dataRows = this.createDataRows(data, styles, values.length, options.reportType)
     values.push(...dataRows)
     
-    // Add change analysis sections if previous period data exists
-    if (data.previousPeriod && data.previousData.length > 0) {
+    // Add change analysis sections if previous period data exists and report type is change-tracking
+    if (data.previousPeriod && data.previousData.length > 0 && options.reportType !== 'full-data') {
       // Add Changes Section (Yellow Header)
       values.push([]) // Empty row
       values.push([]) // Empty row
@@ -138,7 +143,7 @@ class ReportService {
     const worksheet = XLSX.utils.aoa_to_sheet(values)
     
     // Apply styles
-    this.applyWorksheetStyles(worksheet, styles)
+    this.applyWorksheetStyles(worksheet, styles, data, options.reportType)
     
     // Set column widths
     this.setColumnWidths(worksheet)
@@ -192,7 +197,7 @@ class ReportService {
   /**
    * Create data rows with period comparison
    */
-  private createDataRows(data: PeriodComparisonData, styles: any, startRow: number): any[][] {
+  private createDataRows(data: PeriodComparisonData, styles: any, startRow: number, reportType?: 'full-data' | 'change-tracking'): any[][] {
     const rows: any[][] = []
     
     // Process current period data
@@ -201,7 +206,7 @@ class ReportService {
       rows.push(dataRow)
       
       // Apply styling for new/modified records
-      this.applyRowStyles(styles, startRow + index, row, data.previousData)
+      this.applyRowStyles(styles, startRow + index, row, data.previousData, reportType)
     })
     
     return rows
@@ -425,35 +430,19 @@ class ReportService {
   /**
    * Apply row styles for highlighting changes
    */
-  private applyRowStyles(styles: any, rowIndex: number, currentRow: BusinessQuarterRow, previousData: BusinessQuarterRow[]): void {
+  private applyRowStyles(styles: any, rowIndex: number, currentRow: BusinessQuarterRow, previousData: BusinessQuarterRow[], reportType?: 'full-data' | 'change-tracking'): void {
     const previousRow = previousData.find(prev => 
       prev.entityNameEnglish === currentRow.entityNameEnglish &&
       prev.commercialRegistrationNumber === currentRow.commercialRegistrationNumber
     )
     
     if (!previousRow) {
-      // New record - highlight in light green
-      for (let col = 0; col < 15; col++) { // Adjust based on actual column count
-        const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: col })
-        styles[cellAddress] = { 
-          fill: { patternType: 'solid', fgColor: { rgb: 'E8F5E8' } },
-          border: {
-            top: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            left: { style: 'thin', color: { rgb: 'CCCCCC' } },
-            right: { style: 'thin', color: { rgb: 'CCCCCC' } }
-          }
-        }
-      }
-    } else {
-      // Check for changes in ownership percentage
-      if (currentRow.ownershipPercentage !== previousRow.ownershipPercentage) {
-        // Highlight ownership percentage columns in yellow
-        const ownershipCols = [6, 7] // Adjusted positions after inserting ownership columns
-        ownershipCols.forEach(col => {
+      // New record - highlight in bright vibrant green only for Change Tracking Report
+      if (reportType === 'change-tracking') {
+        for (let col = 0; col < 15; col++) { // Adjust based on actual column count
           const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: col })
           styles[cellAddress] = { 
-            fill: { patternType: 'solid', fgColor: { rgb: 'FFFF99' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'E8F5E8' } }, // Bright vibrant green for new additions
             border: {
               top: { style: 'thin', color: { rgb: 'CCCCCC' } },
               bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
@@ -461,8 +450,31 @@ class ReportService {
               right: { style: 'thin', color: { rgb: 'CCCCCC' } }
             }
           }
-        })
+        }
       }
+    } else {
+      // For Full Data Report, keep existing logic unchanged
+      // For Change Tracking Report, remove the yellow highlighting for ownership changes
+      if (reportType === 'full-data') {
+        // Check for changes in ownership percentage - keep yellow highlighting for Full Data Report
+        if (currentRow.ownershipPercentage !== previousRow.ownershipPercentage) {
+          // Highlight ownership percentage columns in yellow
+          const ownershipCols = [6, 7] // Adjusted positions after inserting ownership columns
+          ownershipCols.forEach(col => {
+            const cellAddress = XLSX.utils.encode_cell({ r: rowIndex, c: col })
+            styles[cellAddress] = { 
+              fill: { patternType: 'solid', fgColor: { rgb: 'FFFF99' } },
+              border: {
+                top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+                right: { style: 'thin', color: { rgb: 'CCCCCC' } }
+              }
+            }
+          })
+        }
+      }
+      // For Change Tracking Report: no additional styling for existing rows with changes
     }
   }
 
@@ -530,7 +542,7 @@ class ReportService {
   /**
    * Apply worksheet styles
    */
-  private applyWorksheetStyles(worksheet: XLSX.WorkSheet, styles: any): void {
+  private applyWorksheetStyles(worksheet: XLSX.WorkSheet, styles: any, data: PeriodComparisonData, reportType?: 'full-data' | 'change-tracking'): void {
     // Apply data row styles first
     Object.keys(styles).forEach(cellAddress => {
       if (!worksheet[cellAddress]) {
@@ -542,15 +554,74 @@ class ReportService {
     // Get worksheet range
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
     
-    // Apply main header styling - row 8 (0-indexed row 7)
-    const headerRow = 7 // Headers are on row 8 (0-indexed row 7)
-    this.applyHeaderStyling(worksheet, headerRow, range, '90EE90') // Light green
+    // Apply main header styling - row 9 (0-indexed row 8)
+    const headerRow = 8 // Headers are on row 9 (0-indexed row 8)
+    this.applySelectiveHeaderStyling(worksheet, headerRow, range, data, reportType)
     
     // Find and style yellow headers (Changes section)
     this.findAndStyleSectionHeaders(worksheet, range, 'CHANGES BETWEEN QUARTERS', 'FFFF99') // Yellow
     
     // Find and style red headers (Deleted section)
     this.findAndStyleSectionHeaders(worksheet, range, 'DELETED RECORDS', 'FF9999') // Light red
+  }
+
+  /**
+   * Apply selective header styling - only highlight headers when there are new records in Change Tracking Report
+   */
+  private applySelectiveHeaderStyling(worksheet: XLSX.WorkSheet, headerRow: number, range: XLSX.Range, data: PeriodComparisonData, reportType?: 'full-data' | 'change-tracking'): void {
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: headerRow, c: col })
+      
+      // Ensure cell exists
+      if (!worksheet[cellAddress]) {
+        worksheet[cellAddress] = { t: 's', v: '' }
+      }
+      
+      let bgColor = 'F0F0F0' // Default light gray for all headers
+      let textColor = '000000' // Black text
+      
+      // Determine header styling based on report type and presence of new records
+      if (reportType === 'full-data') {
+        // For Full Data Report, keep the original green styling for all headers
+        bgColor = '90EE90' // Light green
+        textColor = '000000' // Black text
+      } else if (reportType === 'change-tracking' && this.hasNewRecords(data)) {
+        // For Change Tracking Report, only apply bright green when there are new records
+        bgColor = '00FF00' // Bright vibrant green to match new row highlighting
+        textColor = '000000' // Black text
+      }
+      // Otherwise keep default gray styling for Change Tracking Report with no new records
+      
+      // Apply styling to header cells
+      worksheet[cellAddress].s = {
+        font: { bold: true, color: { rgb: textColor } },
+        fill: { patternType: 'solid', fgColor: { rgb: bgColor } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: '000000' } },
+          bottom: { style: 'thin', color: { rgb: '000000' } },
+          left: { style: 'thin', color: { rgb: '000000' } },
+          right: { style: 'thin', color: { rgb: '000000' } }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if there are new records in the current data
+   */
+  private hasNewRecords(data: PeriodComparisonData): boolean {
+    if (!data.previousData || data.previousData.length === 0) {
+      return true // All records are new if no previous data
+    }
+    
+    return data.currentData.some(currentRow => {
+      const previousRow = data.previousData.find(prev => 
+        prev.entityNameEnglish === currentRow.entityNameEnglish &&
+        prev.commercialRegistrationNumber === currentRow.commercialRegistrationNumber
+      )
+      return !previousRow // This is a new record
+    })
   }
 
   /**
@@ -727,16 +798,17 @@ class ReportService {
   private generateFilename(options: ReportOptions, data: PeriodComparisonData): string {
     const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
     const period = data.currentPeriod.replace(/\s/g, '-')
+    const reportFormat = options.reportType === 'full-data' ? 'Full-Data' : 'Change-Tracking'
     
     if (options.userRole === 'Administrator') {
       if (options.includeAllCompanies) {
-        return `PIF-Consolidated-Report-${period}-${timestamp}.xlsx`
+        return `PIF-Consolidated-${reportFormat}-Report-${period}-${timestamp}.xlsx`
       } else {
         const company = options.targetCompany || 'PIF-SubmitIQ'
-        return `PIF-Company-Report-${company}-${period}-${timestamp}.xlsx`
+        return `PIF-Company-${reportFormat}-Report-${company}-${period}-${timestamp}.xlsx`
       }
     } else {
-      return `Company-Report-${period}-${timestamp}.xlsx`
+      return `Company-${reportFormat}-Report-${period}-${timestamp}.xlsx`
     }
   }
 

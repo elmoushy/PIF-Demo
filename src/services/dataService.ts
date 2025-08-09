@@ -626,11 +626,13 @@ class DataService {
         const companyData = this.getCompanySampleData()
         console.log('Company sample data periods:', Object.keys(companyData))
         console.log('Company sample data First Half 2025 length:', companyData['First Half 2025']?.length || 0)
+        console.log('Company sample data Quarter 3 2025 length:', companyData['Quarter 3 2025']?.length || 0)
         this.saveUserData(username, companyData)
         
-        // Mark that Company has saved to First Half 2025 (since we just initialized sample data)
+        // Mark that Company has saved to both quarters (since we just initialized sample data)
         this.markUserSavedToQuarter(username, 'First Half 2025')
-        console.log('Marked Company as saved to First Half 2025')
+        this.markUserSavedToQuarter(username, 'Quarter 3 2025')
+        console.log('Marked Company as saved to First Half 2025 and Quarter 3 2025')
       } else if (username === 'PIF_SubmitIQ') {
         const adminData = this.getAdminSampleData()
         console.log('Admin sample data periods:', Object.keys(adminData))
@@ -649,9 +651,10 @@ class DataService {
           console.log('Company data not found, initializing it for Admin to access...')
           const companyDataSample = this.getCompanySampleData()
           this.saveUserData('Company', companyDataSample)
-          // Also mark Company as saved to First Half 2025
+          // Also mark Company as saved to both quarters
           this.markUserSavedToQuarter('Company', 'First Half 2025')
-          console.log('Company data initialized for Admin access and marked as saved')
+          this.markUserSavedToQuarter('Company', 'Quarter 3 2025')
+          console.log('Company data initialized for Admin access and marked as saved for both quarters')
         } else {
           console.log('Company data already exists - Admin can access it')
         }
@@ -676,9 +679,10 @@ class DataService {
           console.log('Company data missing - initializing for Admin access...')
           const companyDataSample = this.getCompanySampleData()
           this.saveUserData('Company', companyDataSample)
-          // Also mark Company as saved to First Half 2025
+          // Also mark Company as saved to both quarters
           this.markUserSavedToQuarter('Company', 'First Half 2025')
-          console.log('Company data initialized for Admin access and marked as saved')
+          this.markUserSavedToQuarter('Company', 'Quarter 3 2025')
+          console.log('Company data initialized for Admin access and marked as saved for both quarters')
         } else {
           // Mark existing Company periods as saved
           const companyPeriods = Object.keys(companyData)
@@ -691,12 +695,10 @@ class DataService {
         }
       }
     }
-    
-    console.log('=== END DEBUG: initializeUserData ===')
   }
 
   /**
-   * Get Company user sample data (3 fake rows for first half 2025)
+   * Get Company user sample data (3 fake rows for first half 2025, 2 rows for quarter 3 2025)
    */
   private getCompanySampleData(): QuarterData {
     return {
@@ -710,7 +712,7 @@ class DataService {
           countryOfIncorporation: 'USA',
           ownershipPercentage: 45,
           acquisitionDisposalDate: '2025-02-15',
-          directParentEntity: '', // No parent - top level entity
+          directParentEntity: 'neom',
           ultimateParentEntity: 'PIF',
           investmentRelationshipType: 'Subsidiary',
           ownershipStructure: 'Direct',
@@ -724,14 +726,14 @@ class DataService {
         },
         {
           id: this.generateId(),
-          entityNameEnglish: 'red-sea', // Matches dropdown value
-          entityNameArabic: 'red-sea-ar', // Matches dropdown value
+          entityNameEnglish: 'red-sea',
+          entityNameArabic: 'red-sea-ar', 
           commercialRegistrationNumber: 'GE2025002',
           moiNumber: '',
           countryOfIncorporation: 'DEU',
           ownershipPercentage: 60,
           acquisitionDisposalDate: '2025-04-10',
-          directParentEntity: 'neom', // References first entity
+          directParentEntity: 'neom', 
           ultimateParentEntity: 'PIF',
           investmentRelationshipType: 'Joint venture',
           ownershipStructure: 'In-direct',
@@ -745,14 +747,58 @@ class DataService {
         },
         {
           id: this.generateId(),
-          entityNameEnglish: 'qiddiya', // Matches dropdown value
-          entityNameArabic: 'qiddiya-ar', // Matches dropdown value
+          entityNameEnglish: 'qiddiya',
+          entityNameArabic: 'qiddiya-ar', 
           commercialRegistrationNumber: 'FS2025003',
           moiNumber: '',
           countryOfIncorporation: 'GBR',
           ownershipPercentage: 30,
           acquisitionDisposalDate: '2025-06-01',
-          directParentEntity: 'red-sea', // References second entity
+          directParentEntity: 'red-sea',
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Associate',
+          ownershipStructure: 'Direct',
+          principalActivities: 'Investment banking and financial advisory services',
+          currency: 'GBP',
+          isModified: false,
+          isNewRow: false,
+          dataSource: 'company',
+          createdAt: new Date('2025-06-01').toISOString(),
+          updatedAt: new Date('2025-06-01').toISOString()
+        }
+      ],
+      'Quarter 3 2025': [
+        {
+          id: this.generateId(),
+          entityNameEnglish: 'red-sea',
+          entityNameArabic: 'red-sea-ar', 
+          commercialRegistrationNumber: 'GE2025002',
+          moiNumber: '',
+          countryOfIncorporation: 'DEU',
+          ownershipPercentage: 60,
+          acquisitionDisposalDate: '2025-04-10',
+          directParentEntity: 'qiddiya', 
+          ultimateParentEntity: 'PIF',
+          investmentRelationshipType: 'Joint venture',
+          ownershipStructure: 'In-direct',
+          principalActivities: 'Renewable energy development and clean technology',
+          currency: 'EUR',
+          isModified: false,
+          isNewRow: false,
+          dataSource: 'company',
+          createdAt: new Date('2025-04-10').toISOString(),
+          updatedAt: new Date('2025-04-10').toISOString()
+        },
+        {
+          id: this.generateId(),
+          entityNameEnglish: 'qiddiya',
+          entityNameArabic: 'qiddiya-ar', 
+          commercialRegistrationNumber: 'FS2025003',
+          moiNumber: '',
+          countryOfIncorporation: 'GBR',
+          ownershipPercentage: 30,
+          acquisitionDisposalDate: '2025-06-01',
+          directParentEntity: 'red-sea',
           ultimateParentEntity: 'PIF',
           investmentRelationshipType: 'Associate',
           ownershipStructure: 'Direct',
@@ -784,7 +830,7 @@ class DataService {
           countryOfIncorporation: 'SAU',
           ownershipPercentage: 100,
           acquisitionDisposalDate: '2025-01-15',
-          directParentEntity: '', // No parent - top level entity
+          directParentEntity: 'sabic', // No parent - top level entity
           ultimateParentEntity: 'PIF',
           investmentRelationshipType: 'Subsidiary',
           ownershipStructure: 'Direct to PIF',

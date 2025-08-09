@@ -14,7 +14,7 @@ const translations = {
 export const useAppStore = defineStore('app', () => {
   // State
   const currentLanguage = ref<Language>('en')
-  const currentTheme = ref<Theme>('night')
+  const currentTheme = ref<Theme>('light')
 
   // Initialize from localStorage
   const initializeFromLocalStorage = () => {

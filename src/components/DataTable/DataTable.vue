@@ -176,177 +176,184 @@
               isRowReadOnly(row) ? styles.readOnlyRow : ''
             ]"
           >
-            <!-- Row Selection Checkbox -->
-            <td :class="styles.tableCell" :style="{ width: '50px', minWidth: '50px', maxWidth: '50px' }">
+            <!-- Selection cell with dynamic colspan if ENTITY column merged into it -->
+            <td
+              v-if="!isRowReadOnly(row)"
+              :class="styles.tableCell"
+              :colspan="selectionColspan(row)"
+              :style="selectionColspan(row) === 1 ? { width: '50px', minWidth: '50px', maxWidth: '50px' } : {}"
+            >
               <input
                 type="checkbox"
                 :checked="selectedRows.includes(row.id)"
                 @change="toggleRowSelection(row.id)"
                 :class="styles.rowCheckbox"
-                :disabled="isRowReadOnly(row)"
-                :title="isRowReadOnly(row) ? 'Cannot select read-only row' : ''"
               />
             </td>
-            <td 
-              v-for="column in columns" 
-              :key="column.key" 
-              :class="styles.tableCell"
-              :style="getColumnStyle(column.key)"
-              :data-row-id="row.id"
-              :data-column-key="column.key"
-            >
-              <div :class="styles.cellContainer">
-                <!-- SearchableDropdown for Entity Name English -->
-                <SearchableDropdown
-                  v-if="column.editable && column.key === DROPDOWN_COLUMNS.ENTITY_NAME_ENGLISH"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="entityNameOptions"
-                  placeholder="Select entity name..."
-                  search-placeholder="Search entities..."
-                  no-results-text="No entities found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Entity Name Arabic -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.ENTITY_NAME_ARABIC"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="arabicLegalNameOptions"
-                  placeholder="Select Arabic legal name..."
-                  search-placeholder="Search Arabic names..."
-                  no-results-text="No Arabic names found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Country of Incorporation -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.COUNTRY_OF_INCORPORATION"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="countries"
-                  placeholder="Select country..."
-                  search-placeholder="Search countries..."
-                  no-results-text="No countries found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Investment Relationship Type -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.INVESTMENT_RELATIONSHIP_TYPE"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="relationshipTypeOptions"
-                  placeholder="Select relationship type..."
-                  search-placeholder="Search relationship types..."
-                  no-results-text="No relationship types found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Ownership Structure -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.OWNERSHIP_STRUCTURE"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="ownershipStructureOptions"
-                  placeholder="Select ownership structure..."
-                  search-placeholder="Search ownership structures..."
-                  no-results-text="No ownership structures found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Direct Parent Entity -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.DIRECT_PARENT_ENTITY"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="directParentOptions"
-                  placeholder="Select direct parent..."
-                  search-placeholder="Search parent entities..."
-                  no-results-text="No parent entities found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- SearchableDropdown for Currency -->
-                <SearchableDropdown
-                  v-else-if="column.editable && column.key === DROPDOWN_COLUMNS.CURRENCY"
-                  :model-value="row[column.key]"
-                  @update:model-value="handleDropdownChange(row, column.key, $event)"
-                  :options="currencies"
-                  placeholder="Select currency..."
-                  search-placeholder="Search currencies..."
-                  no-results-text="No currencies found"
-                  :disabled="isRowReadOnly(row)"
-                  :class="[
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                />
-                <!-- Regular input for other editable columns -->
-                <input
-                  v-else-if="column.editable && column.key !== 'reportingPeriod'"
-                  v-model="row[column.key]"
-                  @input="markAsModified(row)"
-                  @blur="validateField(row, column.key)"
-                  :class="[
-                    styles.cellInput,
-                    column.required && !row[column.key] ? styles.requiredField : '',
-                    !isFieldValid(row, column.key) ? styles.invalidField : '',
-                    isRowReadOnly(row) ? styles.readOnlyField : ''
-                  ]"
-                  :type="column.type || 'text'"
-                  :required="column.required"
-                  :placeholder="isRowReadOnly(row) ? 'Read-only' : (column.required ? 'Required *' : '')"
-                  :disabled="isRowReadOnly(row)"
-                  :readonly="isRowReadOnly(row)"
-                />
-                <!-- Display span for non-editable columns -->
-                <span v-else :class="styles.cellText">
-                  {{ row[column.key] }}
-                  <span v-if="isRowReadOnly(row) && column.editable" :class="styles.lockIcon">🔒</span>
-                </span>
-                
-                <!-- Validation Error Message -->
-                <div 
-                  v-if="!isFieldValid(row, column.key) && fieldErrors[row.id]?.[column.key]" 
-                  :class="styles.cellError"
-                  @click.stop
-                >
-                  {{ fieldErrors[row.id][column.key] }}
+
+            <!-- Render remaining data cells with possible merged colspan -->
+            <template v-for="cell in buildRowCells(row)" :key="cell.key">
+              <td
+                :colspan="cell.colspan"
+                :class="styles.tableCell"
+                :style="getColumnStyle(cell.key)"
+                :data-row-id="row.id"
+                :data-column-key="cell.key"
+              >
+                <div :class="styles.cellContainer">
+                  <!-- SearchableDropdown for Entity Name English -->
+                  <SearchableDropdown
+                    v-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.ENTITY_NAME_ENGLISH"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="getFilteredEntityNameOptions(row)"
+                    placeholder="Select entity name..."
+                    search-placeholder="Search entities..."
+                    no-results-text="No entities found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- SearchableDropdown for Entity Name Arabic -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.ENTITY_NAME_ARABIC"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="arabicLegalNameOptions"
+                    placeholder="Select Arabic legal name..."
+                    search-placeholder="Search Arabic names..."
+                    no-results-text="No Arabic names found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Country of Incorporation -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.COUNTRY_OF_INCORPORATION"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="countries"
+                    placeholder="Select country..."
+                    search-placeholder="Search countries..."
+                    no-results-text="No countries found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Investment Relationship Type -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.INVESTMENT_RELATIONSHIP_TYPE"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="relationshipTypeOptions"
+                    placeholder="Select relationship type..."
+                    search-placeholder="Search relationship types..."
+                    no-results-text="No relationship types found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Ownership Structure -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.OWNERSHIP_STRUCTURE"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="ownershipStructureOptions"
+                    placeholder="Select ownership structure..."
+                    search-placeholder="Search ownership structures..."
+                    no-results-text="No ownership structures found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Direct Parent Entity -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.DIRECT_PARENT_ENTITY"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="directParentOptions"
+                    placeholder="Select direct parent..."
+                    search-placeholder="Search parent entities..."
+                    no-results-text="No parent entities found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Currency -->
+                  <SearchableDropdown
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key === DROPDOWN_COLUMNS.CURRENCY"
+                    :model-value="row[cell.key]"
+                    @update:model-value="handleDropdownChange(row, cell.key, $event)"
+                    :options="currencies"
+                    placeholder="Select currency..."
+                    search-placeholder="Search currencies..."
+                    no-results-text="No currencies found"
+                    :disabled="isRowReadOnly(row)"
+                    :class="[
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                  />
+                  <!-- Generic input -->
+                  <input
+                    v-else-if="props.columns.find(c => c.key === cell.key)?.editable && cell.key !== 'reportingPeriod'"
+                    v-model="row[cell.key]"
+                    @input="markAsModified(row)"
+                    @blur="validateField(row, cell.key)"
+                    :class="[
+                      styles.cellInput,
+                      props.columns.find(c => c.key === cell.key)?.required && !row[cell.key] ? styles.requiredField : '',
+                      !isFieldValid(row, cell.key) ? styles.invalidField : '',
+                      isRowReadOnly(row) ? styles.readOnlyField : ''
+                    ]"
+                    :type="props.columns.find(c => c.key === cell.key)?.type || 'text'"
+                    :required="props.columns.find(c => c.key === cell.key)?.required"
+                    :placeholder="isRowReadOnly(row) ? 'Read-only' : (props.columns.find(c => c.key === cell.key)?.required ? 'Required *' : '')"
+                    :disabled="isRowReadOnly(row)"
+                    :readonly="isRowReadOnly(row)"
+                  />
+                  <!-- Static text -->
+                  <span v-else :class="styles.cellText">
+                    {{ row[cell.key] }}
+                    <span v-if="isRowReadOnly(row) && props.columns.find(c => c.key === cell.key)?.editable" :class="styles.lockIcon">🔒</span>
+                  </span>
+                  <!-- Validation error -->
+                  <div
+                    v-if="!isFieldValid(row, cell.key) && fieldErrors[row.id]?.[cell.key]"
+                    :class="styles.cellError"
+                    @click.stop
+                  >
+                    {{ fieldErrors[row.id][cell.key] }}
+                  </div>
                 </div>
-              </div>
-            </td>
+              </td>
+            </template>
+
             <td 
               :class="styles.tableCell"
               :style="getColumnStyle('actions')"
             >
               <div :class="styles.actionButtons">
+                <!-- ...existing action buttons... -->
                 <button 
                   @click="$emit('viewRow', row)"
                   :class="styles.actionButton"
@@ -372,7 +379,6 @@
                   <span :class="styles.actionIcon">📋</span>
                   <span v-if="isRowReadOnly(row)" :class="styles.lockIcon">🔒</span>
                 </button>
-                <!-- Delete button for unsaved rows -->
                 <button 
                   v-if="row.isNewRow"
                   @click="deleteUnsavedRow(row.id)"
@@ -542,8 +548,8 @@ const isAllSelected = computed(() => {
 const countries = computed(() => countriesData)
 const currencies = computed(() => currenciesData)
 
-// Entity Name options for English field
-const entityNameOptions = computed(() => [
+// Entity Name options for English field - Base list of all available entities
+const baseEntityNameOptions = [
   { value: 'saudi-aramco', label: 'Saudi Aramco' },
   { value: 'sabic', label: 'SABIC (Saudi Basic Industries Corporation)' },
   { value: 'almarai', label: 'Almarai Company' },
@@ -559,7 +565,7 @@ const entityNameOptions = computed(() => [
   { value: 'roshn', label: 'Roshn Group' },
   { value: 'elm', label: 'Elm Company' },
   { value: 'sisco', label: 'Saudi Investment Services Company' }
-])
+]
 
 // Arabic Legal Name options for Arabic field
 const arabicLegalNameOptions = computed(() => [
@@ -628,6 +634,32 @@ const directParentOptions = computed(() => {
   }))
 })
 
+// Helper function to get filtered entity name options for a specific row
+const getFilteredEntityNameOptions = (currentRow: TableRow) => {
+  // Get all currently selected entity name values from OTHER rows (excluding current row)
+  const selectedEntityNames = props.data
+    .filter(row => row.id !== currentRow.id) // Exclude current row
+    .map(row => row.entityNameEnglish)
+    .filter(name => name && String(name).trim() !== '') // Filter out empty/null values
+    .map(name => String(name).trim()) // Ensure string and trim whitespace
+  
+  // Remove duplicates to get unique selected values
+  const uniqueSelectedNames = [...new Set(selectedEntityNames)]
+  
+  // Filter out options that are already selected in other rows
+  const filteredOptions = baseEntityNameOptions.filter(option => {
+    const isAlreadySelected = uniqueSelectedNames.includes(option.label)
+    const isCurrentValue = currentRow.entityNameEnglish && String(currentRow.entityNameEnglish).trim() === option.label
+    
+    // Include option if:
+    // 1. It's not selected in other rows, OR
+    // 2. It's the current row's selected value (allow keeping current selection)
+    return !isAlreadySelected || isCurrentValue
+  })
+  
+  return filteredOptions
+}
+
 // Check if a specific row should be read-only
 const isRowReadOnly = (row: TableRow): boolean => {
   // Global read-only state (quarter locked)
@@ -684,6 +716,16 @@ const handleDropdownChange = (row: TableRow, columnKey: string, value: string | 
   if (columnKey === 'countryOfIncorporation') {
     validateField(row, 'commercialRegistrationNumber')
     validateField(row, 'moiNumber')
+  }
+  
+  // If entity name changes, re-validate all Direct Parent Entity fields in other rows
+  // since they depend on available entity names
+  if (columnKey === 'entityNameEnglish') {
+    props.data.forEach(otherRow => {
+      if (otherRow.id !== row.id && otherRow.directParentEntity) {
+        validateField(otherRow, 'directParentEntity')
+      }
+    })
   }
   
   markAsModified(row)
@@ -837,16 +879,31 @@ const validateField = (row: TableRow, fieldKey: string) => {
   
   // Special validation for Direct Parent Entity
   if (fieldKey === 'directParentEntity') {
-    // Direct Parent is not required, but if provided, must exist as Entity Name in another row
+    // Direct Parent is not required, but if provided, must exist as Entity Name in the same or another row
     if (value && String(value).trim() !== '') {
       const entityNameExists = props.data.some(dataRow => 
-        dataRow.id !== row.id && // Must be a different row
         dataRow.entityNameEnglish && 
         String(dataRow.entityNameEnglish).trim() === String(value).trim()
       )
       
       if (!entityNameExists) {
-        fieldErrors.value[row.id][fieldKey] = 'Direct Parent Entity must exist as an Entity Name in another row'
+        fieldErrors.value[row.id][fieldKey] = 'Direct Parent Entity must exist as an Entity Name in the same or another row'
+        return false
+      }
+    }
+  }
+  
+  // Special validation for Entity Name English - must be unique across all rows
+  if (fieldKey === 'entityNameEnglish') {
+    if (value && String(value).trim() !== '') {
+      const duplicateExists = props.data.some(dataRow => 
+        dataRow.id !== row.id && // Exclude current row
+        dataRow.entityNameEnglish && 
+        String(dataRow.entityNameEnglish).trim() === String(value).trim()
+      )
+      
+      if (duplicateExists) {
+        fieldErrors.value[row.id][fieldKey] = 'Entity Name must be unique. This name is already used in another row'
         return false
       }
     }
@@ -962,6 +1019,31 @@ const getColumnStyle = (columnKey: string) => {
     maxWidth: `${columnWidths.value[columnKey] || 220}px`
   }
 }
+
+// Add helper logic for merged ENTITY NAME cell handling
+const ENTITY = DROPDOWN_COLUMNS.ENTITY_NAME_ENGLISH;
+const isEmpty = (v: unknown) => v == null || (typeof v === 'string' && v.trim() === '');
+const isReadOnlyToken = (v: unknown) => typeof v === 'string' && v.replace(/[-\s]+/g, '').toLowerCase() === 'readonly';
+const shouldSkipEntityName = (row: TableRow) => isRowReadOnly(row) && (isEmpty(row[ENTITY]) || isReadOnlyToken(row[ENTITY]));
+interface BuiltCell { key: string; colspan: number }
+const buildRowCells = (row: TableRow): BuiltCell[] => {
+  const cols: BuiltCell[] = props.columns.map(c => ({ key: c.key, colspan: 1 }));
+  const idx = props.columns.findIndex(c => c.key === ENTITY);
+  if (idx !== -1 && shouldSkipEntityName(row)) {
+    if (idx > 0) {
+      cols[idx - 1].colspan += 1;
+      cols.splice(idx, 1);
+      (row as any).__mergeIntoSelection = false;
+    } else {
+      (row as any).__mergeIntoSelection = true;
+      cols.splice(idx, 1);
+    }
+  } else {
+    (row as any).__mergeIntoSelection = false;
+  }
+  return cols;
+};
+const selectionColspan = (row: TableRow) => (row as any).__mergeIntoSelection ? 2 : 1;
 
 // Watch for validation state changes and emit to parent
 watch([hasValidationErrors, validationErrorCount], ([hasErrors, errorCount]) => {

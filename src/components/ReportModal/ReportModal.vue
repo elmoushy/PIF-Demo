@@ -13,6 +13,39 @@
           <p><strong>{{ t('businessQuarters.previousPeriod') }}:</strong> {{ previousPeriod || t('businessQuarters.noPreviousPeriod') }}</p>
         </div>
 
+        <!-- Report Format Selection (All Users) -->
+        <div :class="styles.reportOptions">
+          <h3>{{ t('businessQuarters.reportFormat') }}</h3>
+          
+          <div :class="styles.optionGroup">
+            <label :class="styles.radioOption">
+              <input 
+                type="radio" 
+                v-model="selectedReportFormat" 
+                value="full-data"
+                :class="styles.radioInput"
+              />
+              <div :class="styles.optionContent">
+                <strong>{{ t('businessQuarters.fullDataReport') }}</strong>
+                <p>{{ t('businessQuarters.fullDataReportDesc') }}</p>
+              </div>
+            </label>
+            
+            <label :class="styles.radioOption">
+              <input 
+                type="radio" 
+                v-model="selectedReportFormat" 
+                value="change-tracking"
+                :class="styles.radioInput"
+              />
+              <div :class="styles.optionContent">
+                <strong>{{ t('businessQuarters.changeTrackingReport') }}</strong>
+                <p>{{ t('businessQuarters.changeTrackingReportDesc') }}</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <!-- Administrator Report Options -->
         <div v-if="userRole === 'Administrator'" :class="styles.reportOptions">
           <h3>{{ t('businessQuarters.reportType') }}</h3>
@@ -70,11 +103,15 @@
 
         <!-- Report Content Info -->
         <div :class="styles.reportInfo">
-          <h3>{{ t('businessQuarters.reportContents') }}</h3>
+          <h3 v-if="selectedReportFormat === 'full-data'">{{ t('businessQuarters.reportContentsFullData') }}</h3>
+          <h3 v-else>{{ t('businessQuarters.reportContentsChangeTracking') }}</h3>
+          
           <ul :class="styles.contentList">
             <li>{{ t('businessQuarters.allColumns') }}</li>
-            <li>{{ t('businessQuarters.ownershipComparison') }}</li>
-            <li v-if="previousPeriod">{{ t('businessQuarters.periodComparison') }}</li>
+            <li v-if="selectedReportFormat === 'change-tracking'">{{ t('businessQuarters.ownershipComparison') }}</li>
+            <li v-if="selectedReportFormat === 'change-tracking' && previousPeriod">{{ t('businessQuarters.periodComparison') }}</li>
+            <li v-if="selectedReportFormat === 'change-tracking' && previousPeriod">{{ t('businessQuarters.changesAnalysis') }}</li>
+            <li v-if="selectedReportFormat === 'change-tracking' && previousPeriod">{{ t('businessQuarters.deletedRecordsTracking') }}</li>
             <li>{{ t('businessQuarters.excelFormat') }}</li>
           </ul>
         </div>
@@ -126,6 +163,7 @@ const { t } = useI18n()
 
 // Modal state
 const isGenerating = ref(false)
+const selectedReportFormat = ref<'full-data' | 'change-tracking'>('change-tracking')
 const selectedReportType = ref<'consolidated' | 'company-specific'>('consolidated')
 const selectedCompany = ref<string>('')
 
@@ -137,6 +175,7 @@ const previousPeriod = computed(() => {
 // Reset form when modal opens
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
+    selectedReportFormat.value = 'change-tracking'
     selectedReportType.value = 'consolidated'
     selectedCompany.value = ''
   }
@@ -157,7 +196,8 @@ const generateReport = async () => {
     const reportOptions: ReportOptions = {
       userRole: props.userRole,
       username: props.username,
-      currentPeriod: props.currentPeriod
+      currentPeriod: props.currentPeriod,
+      reportType: selectedReportFormat.value
     }
     
     if (props.userRole === 'Administrator') {
@@ -171,13 +211,16 @@ const generateReport = async () => {
     await reportService.generateExcelReport(reportOptions)
     
     // Show success message
+    const reportFormatText = selectedReportFormat.value === 'full-data' 
+      ? 'Full Data' 
+      : 'Change Tracking'
     const reportTypeText = props.userRole === 'Administrator' 
       ? (reportOptions.includeAllCompanies ? 'Consolidated' : `Company-specific (${selectedCompany.value})`)
       : 'Company'
     
     notificationService.success(
       t('businessQuarters.reportGenerated'),
-      `${reportTypeText} Excel report for ${props.currentPeriod} has been downloaded successfully.`
+      `${reportFormatText} ${reportTypeText} Excel report for ${props.currentPeriod} has been downloaded successfully.`
     )
     
     emit('reportGenerated', true)
