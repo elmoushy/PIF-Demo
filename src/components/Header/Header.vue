@@ -351,26 +351,6 @@ const toggleTheme = () => {
   announceToScreenReader(announcement)
 }
 
-const toggleLanguage = (event?: Event) => {
-  // Prevent any event bubbling that might trigger other handlers
-  if (event) {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-  
-  // const oldLanguage = i18n.currentLanguage
-  i18n.toggleLanguage()
-  
-  // Announce to screen readers
-  const announcement = i18n.currentLanguage === 'ar' 
-    ? 'تم التبديل إلى العربية' 
-    : 'Switched to English'
-  
-  announceToScreenReader(announcement)
-  
-  // Log for debugging
-}
-
 // Notification methods
 const toggleNotifications = () => {
   if (!showNotifications.value) {
