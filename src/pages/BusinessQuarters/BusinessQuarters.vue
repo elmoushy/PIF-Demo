@@ -25,6 +25,8 @@
         table-id="business-quarters-table"
         @addRow="handleAddRow"
         @saveChanges="handleSaveChanges"
+        @saveDraft="handleSaveDraft"
+        @unsubmit="handleUnsubmit"
         @generateReport="handleGenerateReport"
         @createInForm="handleCreateInForm"
         @copyFromAnotherQuarter="handleCopyFromAnotherQuarter"
@@ -73,7 +75,7 @@
     <!-- Report Modal -->
     <ReportModal
       :isOpen="reportModalState.isOpen"
-      :userRole="currentUser?.role || 'Company'"
+      :userRole="(currentUser?.role === 'SuperAdmin' ? 'Administrator' : currentUser?.role) || 'Company'"
       :username="currentUser?.username || ''"
       :currentPeriod="selectedPeriod"
       @close="closeReportModal"
@@ -262,193 +264,58 @@ const tableColumns = computed(() => {
   return columns
 })
 
-// Dropdown options (Legacy - moved to DataTable component)
-// const dropdownOptions = {
-//   // Entity names - these would typically come from a service/API
-//   entityNames: [
-//     { value: 'Saudi Aramco', label: 'Saudi Aramco' },
-//     { value: 'SABIC', label: 'SABIC' },
-//     { value: 'Al Rajhi Bank', label: 'Al Rajhi Bank' },
-//     { value: 'Saudi Telecom Company', label: 'Saudi Telecom Company' },
-//     { value: 'Ma\'aden', label: 'Ma\'aden' }
-//   ],
-//   
-//   // Arabic entity names
-//   entityNamesArabic: [
-//     { value: 'أرامكو السعودية', label: 'أرامكو السعودية' },
-//     { value: 'سابك', label: 'سابك' },
-//     { value: 'مصرف الراجحي', label: 'مصرف الراجحي' },
-//     { value: 'شركة الاتصالات السعودية', label: 'شركة الاتصالات السعودية' },
-//     { value: 'معادن', label: 'معادن' }
-//   ],
-//   
-//   // Investment relationship types
-//   investmentRelationshipTypes: [
-//     { value: 'Subsidiary', label: 'Subsidiary' },
-//     { value: 'Joint venture', label: 'Joint venture' },
-//     { value: 'Associate', label: 'Associate' },
-//     { value: 'Subsidiary of Associate', label: 'Subsidiary of Associate' },
-//     { value: 'Joint Venture of Associate', label: 'Joint Venture of Associate' },
-//     { value: 'Associate of Associate', label: 'Associate of Associate' },
-//     { value: 'Subsidiary of a JV', label: 'Subsidiary of a JV' },
-//     { value: 'Associate of a JV', label: 'Associate of a JV' },
-//     { value: 'Joint Venture of a JV', label: 'Joint Venture of a JV' }
-//   ],
-//   
-//   // Ownership structure options
-//   ownershipStructure: [
-//     { value: 'Direct and In-Direct', label: 'Direct and In-Direct' },
-//     { value: 'PIF', label: 'PIF' }
-//   ]
-// }
-
-// Validation functions (Legacy - moved to DataTable component)
-// const validateField = (field: string, value: any, rowData: any) => {
-//   const errors: string[] = []
-//   
-//   switch (field) {
-//     case 'entityNameEnglish':
-//       if (value && !/^[a-zA-Z0-9\s&.'()-]+$/.test(value)) {
-//         errors.push('Entity name must contain only English characters, numbers, and common symbols')
-//       }
-//       break
-//       
-//     case 'entityNameArabic':
-//       if (value && !/^[\u0600-\u06FF\s\u0660-\u0669.-]+$/.test(value)) {
-//         errors.push('Arabic legal name must contain only Arabic characters and numbers')
-//       }
-//       break
-//       
-//     case 'commercialRegistrationNumber':
-//       if (rowData.countryOfIncorporation === 'SAU') {
-//         if (value && !/^\d+$/.test(value)) {
-//           errors.push('CR number must be numbers only for Saudi entities')
-//         }
-//       }
-//       break
-//       
-//     case 'moiNumber':
-//       // MOI Number is only required for Saudi entities
-//       if (rowData.countryOfIncorporation === 'SAU') {
-//         if (!value || value.trim() === '') {
-//           errors.push('MOI number is required for Saudi entities')
-//         } else if (!/^\d+$/.test(value)) {
-//           errors.push('MOI number must be numbers only for Saudi entities')
-//         }
-//       }
-//       break
-//       
-//     case 'ownershipPercentage':
-//       const percentage = parseFloat(value)
-//       if (isNaN(percentage) || percentage < 0 || percentage > 100) {
-//         errors.push('Ownership percentage must be between 0 and 100')
-//       }
-//       break
-//       
-//     case 'directParentEntity':
-//       // Validate that direct parent exists in other rows
-//       if (value) {
-//         const existsInData = tableData.value.some(row => 
-//           row.entityNameEnglish === value && row.id !== rowData.id
-//         )
-//         if (!existsInData) {
-//           errors.push('Direct parent entity must exist as an Entity Name in another row')
-//         }
-//       }
-//       break
-//   }
-//   
-//   return errors
-// }
-
-// Helper function to check if MOI field is required based on country (Legacy - moved to DataTable component)
-// const isMoiRequired = (countryOfIncorporation: string) => {
-//   return countryOfIncorporation === 'SAU'
-// }
-
-// Get available direct parent options (from existing entity names) (Legacy - moved to DataTable component)
-// const getDirectParentOptions = computed(() => {
-//   const entityNames = tableData.value
-//     .map(row => row.entityNameEnglish)
-//     .filter(name => name && name.trim())
-//     .map(name => ({ value: name, label: name }))
-//   
-//   // Remove duplicates
-//   const uniqueNames = entityNames.filter((item, index, arr) => 
-//     arr.findIndex(i => i.value === item.value) === index
-//   )
-//   
-//   return uniqueNames
-// })
-
-// Computed properties
+// Optimized computed properties - use more efficient filtering
 const filteredData = computed(() => {
   let filtered = tableData.value
 
-  // Apply search filter - search across all text fields
+  // Apply search filter - optimized for performance
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(row => {
-      const searchableFields = [
-        row.entityNameEnglish,
-        row.entityNameArabic,
-        row.commercialRegistrationNumber,
-        row.directParentEntity,
-        row.investmentRelationshipType,
-        row.principalActivities,
-        row.countryOfIncorporation
-      ]
-      
-      return searchableFields.some(value => 
-        String(value).toLowerCase().includes(query)
+      // Only search essential fields for better performance
+      return (
+        (row.entityNameEnglish && row.entityNameEnglish.toLowerCase().includes(query)) ||
+        (row.entityNameArabic && row.entityNameArabic.toLowerCase().includes(query)) ||
+        (row.commercialRegistrationNumber && row.commercialRegistrationNumber.toLowerCase().includes(query))
       )
     })
   }
 
-  // Apply filter dropdown filters
-  Object.entries(filters.value).forEach(([filterType, filterValue]) => {
-    if (filterValue) {
-      switch (filterType) {
-        case 'country':
-        case 'countryOfIncorporation':
-          filtered = filtered.filter(row => 
-            row.countryOfIncorporation.toLowerCase().includes(filterValue.toLowerCase())
-          )
-          break
-        case 'investmentRelationshipType':
-          filtered = filtered.filter(row => 
-            row.investmentRelationshipType.toLowerCase().includes(filterValue.toLowerCase())
-          )
-          break
-        default:
-          // Generic filter for any other field
-          filtered = filtered.filter(row => 
-            String((row as any)[filterType]).toLowerCase().includes(filterValue.toLowerCase())
-          )
-      }
-    }
-  })
+  // Apply filter dropdown filters - simplified
+  if (filters.value.country) {
+    filtered = filtered.filter(row => 
+      row.countryOfIncorporation && row.countryOfIncorporation.toLowerCase().includes(filters.value.country.toLowerCase())
+    )
+  }
+  
+  if (filters.value.currency) {
+    filtered = filtered.filter(row => 
+      row.currency && row.currency.toLowerCase().includes(filters.value.currency.toLowerCase())
+    )
+  }
 
   return filtered
 })
 
+// Simple pagination with better performance
 const paginatedData = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
   const end = start + itemsPerPage.value
   return filteredData.value.slice(start, end)
 })
 
-// Quarter progression computed properties
+// Optimized quarter status checking
 const isCurrentQuarterReadOnly = computed(() => {
   return dataService.isQuarterReadOnly(selectedPeriod.value)
 })
 
+// Simple check for previous quarter data
 const hasDataFromPreviousQuarter = computed(() => {
   return tableData.value.some(row => row.isFromPreviousQuarter)
 })
 
 // Event handlers
-const handlePeriodChange = (period: string, quarter: number, year: number) => {
+const handlePeriodChange = async (period: string, quarter: number, year: number) => {
   // Save current data to localStorage before switching periods
   if (selectedPeriod.value && tableData.value.some(row => row.isModified) && currentUser.value?.username) {
     try {
@@ -471,7 +338,9 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
   currentQuarter.value = quarter
   currentYear.value = year
   
-  // Load data for the new period from localStorage
+  // Set loading state
+  loading.value = true
+  
   try {
     let periodData: BusinessQuarterRow[] = []
     let isFromPreviousQuarter = false
@@ -481,30 +350,64 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
       // Initialize user data if it doesn't exist
       dataService.initializeUserData(currentUser.value.username)
       
-      if (isAdmin.value) {
-        // For admin users, load combined data (both admin and company data)
-        console.log('=== LOADING COMBINED DATA FOR ADMIN ===')
-        periodData = dataService.getCombinedDataForAdmin(period)
-        console.log('Admin loaded combined data length:', periodData.length)
+      console.log(`=== LOADING API DATA FOR ${currentUser.value.username} ===`)
+      
+      // Try to load data from API first, with localStorage fallback
+      try {
+        const apiResult = await dataService.loadPeriodDataWithApi(currentUser.value.username, period)
+        periodData = apiResult.data
+        isFromPreviousQuarter = apiResult.isFromPreviousQuarter
+        previousQuarterSource = apiResult.previousQuarterSource
         
-        // Check if admin's data OR company's data is from previous quarter
-        const adminResult = dataService.loadUserPeriodDataWithFallback('PIF_SubmitIQ', period)
-        const companyResult = dataService.loadUserPeriodDataWithFallback('Company', period)
+        console.log('API data loaded successfully:', {
+          dataLength: periodData.length,
+          isFromPreviousQuarter,
+          previousQuarterSource
+        })
         
-        if (adminResult.isFromPreviousQuarter || companyResult.isFromPreviousQuarter) {
-          isFromPreviousQuarter = true
-          // Use the admin's source if available, otherwise company's source
-          previousQuarterSource = adminResult.previousQuarterSource || companyResult.previousQuarterSource
+        // Show success notification for API data
+        if (periodData.length > 0) {
+          notificationService.success(
+            'Data Loaded', 
+            `Successfully loaded ${periodData.length} investment records from API.`
+          )
         }
-      } else {
-        // For company users, use the new fallback logic
-        console.log('=== LOADING COMPANY DATA WITH FALLBACK ===')
-        const companyResult = dataService.loadUserPeriodDataWithFallback(currentUser.value.username, period)
-        periodData = companyResult.data
-        isFromPreviousQuarter = companyResult.isFromPreviousQuarter
-        previousQuarterSource = companyResult.previousQuarterSource
-        console.log('Company loaded data length:', periodData.length)
-        console.log('Company data is from previous quarter:', isFromPreviousQuarter)
+        
+      } catch (apiError) {
+        console.error('API data loading failed, falling back to localStorage:', apiError)
+        
+        // Fall back to localStorage if API fails
+        if (isAdmin.value) {
+          // For admin users, load combined data (both admin and company data)
+          console.log('=== LOADING COMBINED DATA FOR ADMIN (FALLBACK) ===')
+          periodData = dataService.getCombinedDataForAdmin(period)
+          console.log('Admin loaded combined data length:', periodData.length)
+          
+          // Check if admin's data OR company's data is from previous quarter
+          const adminResult = dataService.loadUserPeriodDataWithFallback('PIF_SubmitIQ', period)
+          const companyResult = dataService.loadUserPeriodDataWithFallback('Company', period)
+          
+          if (adminResult.isFromPreviousQuarter || companyResult.isFromPreviousQuarter) {
+            isFromPreviousQuarter = true
+            // Use the admin's source if available, otherwise company's source
+            previousQuarterSource = adminResult.previousQuarterSource || companyResult.previousQuarterSource
+          }
+        } else {
+          // For company users, use the new fallback logic
+          console.log('=== LOADING COMPANY DATA WITH FALLBACK ===')
+          const companyResult = dataService.loadUserPeriodDataWithFallback(currentUser.value.username, period)
+          periodData = companyResult.data
+          isFromPreviousQuarter = companyResult.isFromPreviousQuarter
+          previousQuarterSource = companyResult.previousQuarterSource
+          console.log('Company loaded data length:', periodData.length)
+          console.log('Company data is from previous quarter:', isFromPreviousQuarter)
+        }
+        
+        // Show notification about API failure and localStorage fallback
+        notificationService.warning(
+          'API Unavailable', 
+          'Could not connect to server. Using local data instead.'
+        )
       }
     }
     
@@ -513,6 +416,14 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
       notificationService.info(
         'Previous Quarter Data Loaded', 
         `Data from ${previousQuarterSource} has been loaded for viewing. Click Save to finalize changes for ${period}.`
+      )
+    }
+    
+    // Show notification if no data found
+    if (periodData.length === 0) {
+      notificationService.info(
+        'No Data Found', 
+        `No investment data found for ${period}. You can start adding new entries.`
       )
     }
     
@@ -527,7 +438,15 @@ const handlePeriodChange = (period: string, quarter: number, year: number) => {
     allQuarterData.value[period] = [...tableData.value]
     
   } catch (error) {
+    console.error('Error loading period data:', error)
+    notificationService.error(
+      'Data Loading Failed', 
+      'Failed to load investment data. Please try again or contact support.'
+    )
     tableData.value = []
+  } finally {
+    // Clear loading state
+    loading.value = false
   }
   
   // Reset to first page when period changes
@@ -688,21 +607,79 @@ const handleBulkDuplicate = (rowIds: string[]) => {
   }
 }
 
-const handleSaveChanges = () => {
+const handleSaveChanges = async () => {
   // Check if quarter is read-only
   if (isCurrentQuarterReadOnly.value) {
     notificationService.error(
-      'Cannot Save', 
-      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
+      'Cannot Submit', 
+      'This quarter is locked because future quarters have been submitted. Cannot modify past quarters.'
     )
     return
   }
   
-  // Check for validation errors before saving
+  // Check for validation errors before submitting
   if (hasValidationErrors.value) {
     notificationService.error(
-      'Cannot Save', 
-      `Please fix ${validationErrorCount.value} validation error(s) before saving.`
+      'Cannot Submit', 
+      `Please fix ${validationErrorCount.value} validation error(s) before submitting.`
+    )
+    return
+  }
+  
+  // Check if there are any changes to submit
+  const hasChanges = tableData.value.some(row => row.isModified || row.isNewRow)
+  if (!hasChanges && !hasDataFromPreviousQuarter.value) {
+    notificationService.warning('No Changes', 'No changes detected to submit.')
+    return
+  }
+
+  if (!currentUser.value?.username) {
+    notificationService.error('Cannot Submit', 'No authenticated user found.')
+    return
+  }
+  
+  loading.value = true
+  
+  try {
+    // Submit investments for approval via API
+    const result = await dataService.submitInvestmentsToApi(
+      currentUser.value.username, 
+      selectedPeriod.value, 
+      tableData.value
+    )
+    
+    setTimeout(() => {
+      // Reset modified flags and mark data as submitted
+      tableData.value.forEach(row => {
+        row.isModified = false
+        row.isNewRow = false // Clear the new row flag when submitting
+        row.isFromPreviousQuarter = false // No longer from previous quarter
+        row.isSubmitted = true // Mark as submitted
+        row.isRowReadOnly = true // Submitted data becomes read-only
+      })
+      loading.value = false
+      
+      // Show success message with submission details
+      notificationService.success(
+        'Quarter Submitted Successfully', 
+        `${selectedPeriod.value} has been submitted for approval. ${result.submitted_count} investments were submitted. Previous quarters are now locked from editing.`
+      )
+    }, 1000)
+  } catch (error: any) {
+    loading.value = false
+    
+    // Handle specific API error messages
+    const errorMessage = error.message || 'Failed to submit investments. Please try again.'
+    notificationService.error('Submission Failed', errorMessage)
+  }
+}
+
+const handleSaveDraft = async () => {
+  // Check if quarter is read-only
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Save Draft', 
+      'This quarter is locked because future quarters have been saved. Cannot modify past quarters.'
     )
     return
   }
@@ -710,62 +687,92 @@ const handleSaveChanges = () => {
   // Check if there are any changes to save
   const hasChanges = tableData.value.some(row => row.isModified || row.isNewRow)
   if (!hasChanges) {
-    notificationService.warning('No Changes', 'No changes detected to save.')
+    notificationService.warning('No Changes', 'No changes detected to save as draft.')
     return
   }
 
   if (!currentUser.value?.username) {
-    notificationService.error('Cannot Save', 'No authenticated user found.')
+    notificationService.error('Cannot Save Draft', 'No authenticated user found.')
     return
   }
   
   loading.value = true
   
   try {
-    // Save user-specific data
-    if (isAdmin.value) {
-      // For admin users, need to separate and save data to appropriate user buckets
-      // Only save data that isn't read-only
-      const adminData = tableData.value.filter(row => 
-        (!row.dataSource || row.dataSource === 'admin') && !row.isRowReadOnly
-      )
-      const companyData = tableData.value.filter(row => 
-        row.dataSource === 'company' && !row.isRowReadOnly
-      )
-      
-      if (adminData.length > 0) {
-        dataService.saveUserPeriodData('PIF_SubmitIQ', selectedPeriod.value, adminData)
-      }
-      
-      // Note: Company data should not be saved by admin users since it's read-only
-      // This prevents accidental modification of Company data
-      if (companyData.length > 0) {
-        console.warn('Admin attempted to save Company data, but Company data is read-only')
-      }
-    } else {
-      // For company users, save only their own data (should never be read-only for themselves)
-      const editableData = tableData.value.filter(row => !row.isRowReadOnly)
-      dataService.saveUserPeriodData(currentUser.value.username, selectedPeriod.value, editableData)
-    }
+    // Save draft to API - no validation constraints
+    await dataService.saveDraftToApi(currentUser.value.username, selectedPeriod.value, tableData.value)
     
     setTimeout(() => {
-      // Reset modified flags and mark new rows as saved
+      // Reset modified flags for draft save (but keep isNewRow flag)
       tableData.value.forEach(row => {
         row.isModified = false
-        row.isNewRow = false // Clear the new row flag when saving
-        row.isFromPreviousQuarter = false // No longer from previous quarter
+        // Don't clear isNewRow flag for drafts - keep it until final save
       })
       loading.value = false
       
-      // Show success message with quarter finalization info
       notificationService.success(
-        'Quarter Finalized', 
-        `${selectedPeriod.value} has been saved and finalized. Previous quarters are now locked from editing.`
+        'Draft Saved', 
+        `${selectedPeriod.value} draft has been saved successfully.`
       )
     }, 1000)
   } catch (error) {
     loading.value = false
-    notificationService.error('Save Failed', 'Failed to save changes. Please try again.')
+    notificationService.error('Draft Save Failed', 'Failed to save draft. Please try again.')
+  }
+}
+
+const handleUnsubmit = async () => {
+  // Check if quarter is read-only (shouldn't be needed for unsubmit, but defensive)
+  if (isCurrentQuarterReadOnly.value) {
+    notificationService.error(
+      'Cannot Unsubmit', 
+      'This quarter is locked. Please contact your administrator.'
+    )
+    return
+  }
+
+  if (!currentUser.value?.username) {
+    notificationService.error('Cannot Unsubmit', 'No authenticated user found.')
+    return
+  }
+  
+  // Check if there are any submitted investments to unsubmit
+  const hasSubmittedData = tableData.value.some(row => row.isSubmitted)
+  if (!hasSubmittedData) {
+    notificationService.warning('Nothing to Unsubmit', 'No submitted investments found for this period.')
+    return
+  }
+  
+  loading.value = true
+  
+  try {
+    // Unsubmit investments via API
+    await dataService.unsubmitInvestmentsFromApi(
+      currentUser.value.username, 
+      selectedPeriod.value
+    )
+    
+    setTimeout(() => {
+      // Update local data - mark as unsubmitted and editable
+      tableData.value.forEach(row => {
+        row.isSubmitted = false
+        row.isRowReadOnly = false
+        row.submittedAt = undefined
+        row.submittedBy = undefined
+      })
+      loading.value = false
+      
+      notificationService.success(
+        'Unsubmitted Successfully', 
+        `${selectedPeriod.value} investments have been unsubmitted and can now be modified.`
+      )
+    }, 1000)
+  } catch (error: any) {
+    loading.value = false
+    
+    // Handle specific API error messages
+    const errorMessage = error.message || 'Failed to unsubmit investments. Please try again.'
+    notificationService.error('Unsubmit Failed', errorMessage)
   }
 }
 
@@ -1016,16 +1023,19 @@ onMounted(async () => {
   await authStore.initAuth()
   
   // Then initialize data based on authenticated user
-  initializeData()
+  await initializeData()
 })
 
-// Initialize data from localStorage with proper error handling
-const initializeData = () => {
+// Initialize data from API with localStorage fallback
+const initializeData = async () => {
   try {
     if (!currentUser.value?.username) {
       console.warn('No authenticated user found')
       return
     }
+
+    // Set loading state
+    loading.value = true
 
     // Initialize user-specific data if it doesn't exist
     dataService.initializeUserData(currentUser.value.username)
@@ -1036,19 +1046,71 @@ const initializeData = () => {
     // Update allQuarterData for the modal to work properly
     allQuarterData.value = allData
     
-    // Load user-specific data for the default period
+    // Load API data for the default period
     let defaultPeriodData: BusinessQuarterRow[] = []
+    let isFromPreviousQuarter = false
+    let previousQuarterSource: string | undefined
     
-    if (isAdmin.value) {
-      // For admin users, load combined data (both admin and company data)
-      console.log('=== INITIALIZING COMBINED DATA FOR ADMIN ===')
-      defaultPeriodData = dataService.getCombinedDataForAdmin(selectedPeriod.value)
-      console.log('Admin initialized combined data length:', defaultPeriodData.length)
-    } else {
-      // For company users, load only their own data
-      console.log('=== INITIALIZING COMPANY DATA ONLY ===')
-      defaultPeriodData = dataService.loadUserPeriodData(currentUser.value.username, selectedPeriod.value)
-      console.log('Company initialized data length:', defaultPeriodData.length)
+    console.log(`=== INITIALIZING API DATA FOR ${currentUser.value.username} ===`)
+    
+    try {
+      // Try to load data from API first
+      const apiResult = await dataService.loadPeriodDataWithApi(currentUser.value.username, selectedPeriod.value)
+      defaultPeriodData = apiResult.data
+      isFromPreviousQuarter = apiResult.isFromPreviousQuarter
+      previousQuarterSource = apiResult.previousQuarterSource
+      
+      console.log('API data initialized successfully:', {
+        dataLength: defaultPeriodData.length,
+        isFromPreviousQuarter,
+        previousQuarterSource
+      })
+      
+      // Show success notification for API data
+      if (defaultPeriodData.length > 0) {
+        notificationService.success(
+          'Data Loaded', 
+          `Successfully loaded ${defaultPeriodData.length} investment records from API.`
+        )
+      }
+      
+    } catch (apiError) {
+      console.error('API data initialization failed, falling back to localStorage:', apiError)
+      
+      // Fall back to localStorage if API fails
+      if (isAdmin.value) {
+        // For admin users, load combined data (both admin and company data)
+        console.log('=== INITIALIZING COMBINED DATA FOR ADMIN (FALLBACK) ===')
+        defaultPeriodData = dataService.getCombinedDataForAdmin(selectedPeriod.value)
+        console.log('Admin initialized combined data length:', defaultPeriodData.length)
+      } else {
+        // For company users, load only their own data
+        console.log('=== INITIALIZING COMPANY DATA ONLY (FALLBACK) ===')
+        defaultPeriodData = dataService.loadUserPeriodData(currentUser.value.username, selectedPeriod.value)
+        console.log('Company initialized data length:', defaultPeriodData.length)
+      }
+      
+      // Show notification about API failure and localStorage fallback
+      notificationService.warning(
+        'API Unavailable', 
+        'Could not connect to server. Using local data instead.'
+      )
+    }
+    
+    // Show notification if data was loaded from previous quarter
+    if (isFromPreviousQuarter && previousQuarterSource) {
+      notificationService.info(
+        'Previous Quarter Data Loaded', 
+        `Data from ${previousQuarterSource} has been loaded for viewing.`
+      )
+    }
+    
+    // Show notification if no data found
+    if (defaultPeriodData.length === 0) {
+      notificationService.info(
+        'No Data Found', 
+        `No investment data found for ${selectedPeriod.value}. You can start adding new entries.`
+      )
     }
     
     tableData.value = defaultPeriodData
@@ -1069,6 +1131,9 @@ const initializeData = () => {
   } catch (error) {
     console.error('Failed to initialize data:', error)
     notificationService.error('Initialization Failed', 'Failed to load data. Please refresh the page.')
+  } finally {
+    // Clear loading state
+    loading.value = false
   }
 }
 

@@ -11,12 +11,38 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Computed
   const isAuthenticated = computed(() => {
-    // If is_active is not provided by API, assume active if status is 'Accepted'
+    if (!user.value) {
+      console.log('isAuthenticated: No user')
+      return false
+    }
+    
+    // Check if user has a valid authentication token
+    if (!authService.isAuthenticated()) {
+      console.log('isAuthenticated: No valid token')
+      return false
+    }
+    
+    console.log('isAuthenticated: user role =', user.value.role)
+    console.log('isAuthenticated: user status =', user.value.status)
+    console.log('isAuthenticated: user is_active =', user.value.is_active)
+    
+    // For SuperAdmin, always consider as authenticated if token is valid
+    if ((user.value.role as string) === 'SuperAdmin') {
+      console.log('isAuthenticated: SuperAdmin - returning true')
+      return true
+    }
+    
+    // For other roles, check status and active state
     const userIsActive = user.value?.is_active ?? (user.value?.status === 'Accepted')
-    return !!user.value && user.value.status === 'Accepted' && userIsActive && authService.isAuthenticated()
+    const isAccepted = user.value.status === 'Accepted'
+    
+    console.log('isAuthenticated: userIsActive =', userIsActive, 'isAccepted =', isAccepted)
+    
+    return isAccepted && userIsActive
   })
-  const isAdmin = computed(() => user.value?.role === 'Administrator')
+  const isAdmin = computed(() => user.value?.role === 'Administrator' || (user.value?.role as string) === 'SuperAdmin')
   const isCompany = computed(() => user.value?.role === 'Company')
+  const isSuperAdmin = computed(() => (user.value?.role as string) === 'SuperAdmin')
   const isActive = computed(() => {
     // If is_active is not provided by API, assume active if status is 'Accepted'
     return user.value?.is_active ?? (user.value?.status === 'Accepted')
@@ -47,9 +73,15 @@ export const useAuthStore = defineStore('auth', () => {
     
     try {
       const response = await authService.login(credentials)
-      user.value = response.user
+      user.value = response.user || null
       
-      return response.user
+      // Debug logging
+      console.log('Login response user:', response.user)
+      console.log('Auth store user after login:', user.value)
+      console.log('isAuthenticated after login:', isAuthenticated.value)
+      console.log('authService.isAuthenticated():', authService.isAuthenticated())
+      
+      return response.user || {} as User
     } finally {
       isLoading.value = false
     }
@@ -60,18 +92,18 @@ export const useAuthStore = defineStore('auth', () => {
     
     try {
       const registeredUser = await authService.register(userData)
+      user.value = registeredUser
       return registeredUser
     } finally {
       isLoading.value = false
     }
   }
 
-  const logout = async (_callEndpoint: boolean = true): Promise<void> => {
+  const logout = async (callEndpoint: boolean = true): Promise<void> => {
     isLoading.value = true
     
     try {
-      // In demo mode, just clear local data
-      await authService.logout(false)
+      await authService.logout(callEndpoint)
     } catch (error) {
       console.warn('Logout request failed:', error)
     } finally {
@@ -83,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const updateProfile = async (_updates: Partial<Pick<User, 'first_name' | 'last_name' | 'email'>>): Promise<User> => {
+  const updateProfile = async (updates: Partial<Pick<User, 'first_name' | 'last_name' | 'email'>>): Promise<User> => {
     if (!user.value) {
       throw new Error('No authenticated user')
     }
@@ -91,13 +123,9 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     
     try {
-      // In demo mode, simulate update without calling backend
-      notificationService.info(
-        'Demo Mode',
-        'Profile updates are not available in demo mode.'
-      )
-      
-      return user.value
+      const updatedUser = await authService.updateProfile(updates)
+      user.value = updatedUser
+      return updatedUser
     } catch (error) {
       notificationService.error(
         'Update Failed',
@@ -110,9 +138,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const changePassword = async (
-    _currentPassword: string, 
-    _newPassword: string, 
-    _newPasswordConfirm: string
+    currentPassword: string, 
+    newPassword: string, 
+    newPasswordConfirm: string
   ): Promise<void> => {
     if (!user.value) {
       throw new Error('No authenticated user')
@@ -121,10 +149,10 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     
     try {
-      // In demo mode, show info message
-      notificationService.info(
-        'Demo Mode',
-        'Password changes are not available in demo mode.'
+      await authService.changePassword(currentPassword, newPassword, newPasswordConfirm)
+      notificationService.success(
+        'Password Changed',
+        'Your password has been updated successfully.'
       )
     } catch (error) {
       notificationService.error(
@@ -134,24 +162,6 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     } finally {
       isLoading.value = false
-    }
-  }
-
-  const refreshUserData = async (forceRefresh: boolean = false): Promise<void> => {
-    if (!isAuthenticated.value) return
-
-    // In demo mode, just return current user data
-    if (!forceRefresh) return
-
-    try {
-      // In demo mode, just keep the current user data
-      const currentUser = authService.getCurrentUser()
-      if (currentUser) {
-        user.value = currentUser
-      }
-    } catch (error) {
-      console.warn('Failed to refresh user data:', error)
-      // Don't throw error here as this might be called periodically
     }
   }
 
@@ -197,10 +207,18 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value.username
   }
 
-  const hasPermission = (permission: 'admin' | 'company'): boolean => {
-    if (!user.value || !isActive.value || !isApproved.value) return false
+  const hasPermission = (permission: 'admin' | 'company' | 'superadmin'): boolean => {
+    if (!user.value || !isActive.value) return false
+    
+    // SuperAdmin has all permissions
+    if ((user.value.role as string) === 'SuperAdmin') return true
+    
+    // For other roles, check status first
+    if (user.value.status !== 'Accepted') return false
     
     switch (permission) {
+      case 'superadmin':
+        return (user.value.role as string) === 'SuperAdmin'
       case 'admin':
         return user.value.role === 'Administrator'
       case 'company':
@@ -220,6 +238,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isAdmin,
     isCompany,
+    isSuperAdmin,
     isActive,
     isApproved,
     
@@ -230,7 +249,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     updateProfile,
     changePassword,
-    refreshUserData,
     
     // Helpers
     checkUserStatus,

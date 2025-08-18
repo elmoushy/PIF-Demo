@@ -97,9 +97,11 @@
   height: 100vh;
   width: 420px;
   z-index: 2500;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 255, 194, 0.3) transparent;
+  scroll-behavior: smooth;
 }
 
 /* RTL support for navigation slider container */
@@ -109,22 +111,57 @@
 }
 
 .navigationSliderContainer::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .navigationSliderContainer::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
 }
 
 .navigationSliderContainer::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 194, 0.3);
-  border-radius: 2px;
+  background: rgba(0, 255, 194, 0.4);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.navigationSliderContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 194, 0.6);
+}
+
+/* Theme-specific scrollbar styles */
+[data-theme="light"] .navigationSliderContainer {
+  scrollbar-color: rgba(0, 99, 75, 0.4) transparent;
+}
+
+[data-theme="light"] .navigationSliderContainer::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .navigationSliderContainer::-webkit-scrollbar-thumb {
+  background: rgba(0, 99, 75, 0.4);
+}
+
+[data-theme="light"] .navigationSliderContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 99, 75, 0.6);
+}
+
+[data-theme="dark"] .navigationSliderContainer {
+  scrollbar-color: rgba(24, 242, 163, 0.4) transparent;
+}
+
+[data-theme="dark"] .navigationSliderContainer::-webkit-scrollbar-thumb {
+  background: rgba(24, 242, 163, 0.4);
+}
+
+[data-theme="dark"] .navigationSliderContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 242, 163, 0.6);
 }
 
 /* Navigation Slider - Updated to work within container */
 .navigationSlider {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   background: linear-gradient(145deg, 
     rgba(18, 24, 29, 0.98) 0%, 
     rgba(31, 38, 43, 0.95) 100%);
@@ -132,7 +169,6 @@
   border-inline-end: 1px solid rgba(0, 255, 194, 0.2);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   box-shadow: 
     4px 0 30px rgba(0, 0, 0, 0.4),
     0 0 50px rgba(0, 255, 194, 0.1);
@@ -299,8 +335,8 @@
 
 /* Navigation Content */
 .navContent {
-  flex: 1;
-  padding: 1rem 0;
+  flex: 0 0 auto;
+  padding: 1rem 0 2rem 0;
 }
 
 .navSection {
@@ -750,10 +786,12 @@
 /* Footer */
 .navFooter {
   padding: 1.5rem;
+  margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 [data-theme="light"] .navFooter {
@@ -895,8 +933,12 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .navigationSlider {
+  .navigationSliderContainer {
     width: 100vw;
+  }
+  
+  .navigationSlider {
+    width: 100%;
   }
   
   .quickActions {

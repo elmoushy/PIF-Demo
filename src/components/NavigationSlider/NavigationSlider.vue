@@ -174,6 +174,12 @@ const navigationItems = [
     label: 'navigation.businessQuarters', 
     description: 'navigation.businessQuartersDesc',
     icon: '📈' 
+  },
+  { 
+    path: '/settings', 
+    label: 'navigation.settings', 
+    description: 'navigation.settingsDesc',
+    icon: '⚙️' 
   }
 ]
 
@@ -211,12 +217,12 @@ const handleQuickAction = (_action: string) => {
 
 const handleProfile = () => {
   closeNavigation()
-  // TODO: Navigate to profile page
+  router.push('/profile')
 }
 
 const handleSettings = () => {
   closeNavigation()
-  // TODO: Navigate to settings page
+  router.push('/settings')
 }
 
 const handleLogout = async () => {

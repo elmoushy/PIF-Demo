@@ -186,23 +186,23 @@ const hasActiveFilters = computed(() => {
   return selectedCurrency.value || selectedCountry.value
 })
 
-// Computed
+// Optimized computed properties (cached for better performance)
 const currentPeriod = computed(() => {
   const quarter = quarters.find(q => q.id === selectedQuarter.value)
   return quarter ? `${quarter.label} ${selectedYear.value}` : `Quarter ${selectedQuarter.value} ${selectedYear.value}`
 })
 
-// Get display labels for selected values
+// Simplified display labels with better caching
 const selectedCurrencyLabel = computed(() => {
   if (!selectedCurrency.value) return ''
   const currency = currenciesData.find(c => c.value === selectedCurrency.value)
-  return currency ? currency.label : selectedCurrency.value
+  return currency?.label || selectedCurrency.value
 })
 
 const selectedCountryLabel = computed(() => {
   if (!selectedCountry.value) return ''
   const country = countriesData.find(c => c.value === selectedCountry.value)
-  return country ? country.label : selectedCountry.value
+  return country?.label || selectedCountry.value
 })
 
 // Filter methods

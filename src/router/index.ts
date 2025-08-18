@@ -4,6 +4,12 @@ import Register from '../pages/Auth/Register.vue'
 import Welcome from '../pages/Welcome/Welcome.vue'
 import Dashboard from '../pages/Dashboard/Dashboard.vue'
 import BusinessQuarters from '../pages/BusinessQuarters/BusinessQuarters.vue'
+import Settings from '../pages/Settings/Settings.vue'
+import Profile from '../pages/Profile/Profile.vue'
+import UsersManagement from '../pages/UsersManagement/UsersManagement.vue'
+import CompaniesManagement from '../pages/CompaniesManagement/CompaniesManagement.vue'
+import EntitiesManagement from '../pages/EntitiesManagement/EntitiesManagement.vue'
+import PeriodDeadlines from '../pages/PeriodDeadlines/PeriodDeadlines.vue'
 import { useAuthStore } from '../stores/useAuthStore'
 import notificationService from '../services/notificationService'
 
@@ -54,6 +60,60 @@ const routes: RouteRecordRaw[] = [
       title: 'Business Quarters - PIF',
       requiresAuth: true
     }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: Settings,
+    meta: {
+      title: 'Settings - PIF',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/users-management',
+    name: 'UsersManagement',
+    component: UsersManagement,
+    meta: {
+      title: 'Users Management - PIF',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/companies-management',
+    name: 'CompaniesManagement',
+    component: CompaniesManagement,
+    meta: {
+      title: 'Companies Management - PIF',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/entities-management',
+    name: 'EntitiesManagement',
+    component: EntitiesManagement,
+    meta: {
+      title: 'Entities Management - PIF',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/period-deadlines',
+    name: 'PeriodDeadlines',
+    component: PeriodDeadlines,
+    meta: {
+      title: 'Period Deadlines - PIF',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
+    meta: {
+      title: 'Profile - PIF',
+      requiresAuth: true
+    }
   }
 ]
 
@@ -73,6 +133,12 @@ router.beforeEach(async (to, _from, next) => {
   
   // Check if user is authenticated
   const isAuthenticated = authStore.isAuthenticated
+  
+  // Debug logging
+  console.log('Router guard - to:', to.path)
+  console.log('Router guard - isAuthenticated:', isAuthenticated)
+  console.log('Router guard - user:', authStore.user)
+  console.log('Router guard - requiresAuth:', to.meta?.requiresAuth)
   
   if (to.meta?.requiresAuth && !isAuthenticated) {
     // Protected route but user not authenticated

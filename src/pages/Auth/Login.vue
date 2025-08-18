@@ -115,6 +115,10 @@ const handleLogin = async (data: LoginRequest & { rememberMe: boolean }) => {
       password: data.password
     })
         
+    // Debug logging
+    console.log('Login component - user returned:', user)
+    console.log('Login component - auth store isAuthenticated:', authStore.isAuthenticated)
+    
     // Check if user can actually access the application
     if (user.status === 'Pending') {
       notificationService.accountPending()
@@ -129,7 +133,9 @@ const handleLogin = async (data: LoginRequest & { rememberMe: boolean }) => {
     
     // Redirect to dashboard immediately
     // The router guard will handle authentication checks
+    console.log('Login component - attempting to navigate to dashboard')
     await router.push('/dashboard')
+    console.log('Login component - navigation completed')
     
   } catch (error) {
     notificationService.loginError(error instanceof Error ? error.message : 'Login failed. Please try again.')

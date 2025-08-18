@@ -5,6 +5,9 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  /* Force LTR direction */
+  direction: ltr;
+  text-align: left;
   /* Glassmorphism effect */
   background: rgba(18, 24, 29, 0.85);
   backdrop-filter: blur(20px);
@@ -1932,4 +1935,26 @@
 [data-theme="light"] .fixedDimensionInput:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.9) inset !important;
   -webkit-text-fill-color: #0B0F10 !important;
+}
+
+/* Force LTR for all elements within AuthCard */
+.authCard * {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Override any RTL styles for inputs */
+.authCard input {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Ensure labels and text remain LTR */
+.authCard .label,
+.authCard .heroTitle,
+.authCard .heroSubtitle,
+.authCard .feature,
+.authCard .errorMessage {
+  direction: ltr !important;
+  text-align: left !important;
 }

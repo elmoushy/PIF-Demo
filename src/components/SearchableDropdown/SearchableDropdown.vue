@@ -73,6 +73,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 
+// Utility function for debouncing search
+function debounce(func: Function, wait: number) {
+  let timeout: NodeJS.Timeout
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
 interface DropdownOption {
   value: string | number
   label: string
@@ -109,26 +122,33 @@ const emit = defineEmits<Emits>()
 // Reactive state
 const isOpen = ref(false)
 const searchQuery = ref('')
+const debouncedSearchQuery = ref('')
+
+// Debounced search for better performance
+const debouncedSearch = debounce((value: string) => {
+  debouncedSearchQuery.value = value
+}, 150)
 const highlightedIndex = ref(-1)
 const searchInput = ref<HTMLInputElement>()
 const dropdownTrigger = ref<HTMLElement>()
 const panelRef = ref<HTMLElement>()
 const panelStyles = ref<Record<string, string>>({})
 
-// Computed properties
+// Optimized computed properties with better performance  
 const selectedOption = computed(() => {
   return props.options.find((option) => option.value === props.modelValue)
 })
 
 const filteredOptions = computed(() => {
-  if (!searchQuery.value) {
+  if (!debouncedSearchQuery.value) {
     return props.options
   }
 
+  const query = debouncedSearchQuery.value.toLowerCase()
   return props.options.filter(
     (option) =>
-      option.label.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      option.value.toString().toLowerCase().includes(searchQuery.value.toLowerCase()),
+      option.label.toLowerCase().includes(query) ||
+      option.value.toString().toLowerCase().includes(query)
   )
 })
 
@@ -283,8 +303,13 @@ watch(isOpen, (newValue) => {
   }
 })
 
-// Recalculate position when search results change
-watch(searchQuery, () => {
+// Watch for search input changes and debounce
+watch(searchQuery, (newValue) => {
+  debouncedSearch(newValue)
+})
+
+// Recalculate position when debounced search results change
+watch(debouncedSearchQuery, () => {
   nextTick(() => calculatePanelPosition())
 })
 </script>

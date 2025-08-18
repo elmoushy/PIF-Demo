@@ -9,7 +9,9 @@
     "registerButton": "إنشاء حساب",
     "welcome": "مرحباً بك في PIF",
     "subtitle": "مستقبلك يبدأ هنا",
-    "loggedOut": "تم تسجيل الخروج بنجاح"
+    "loggedOut": "تم تسجيل الخروج بنجاح",
+    "sessionEnded": "انتهت الجلسة",
+    "sessionEndedMessage": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى للمتابعة."
   },
   "navigation": {
     "menu": "القائمة",
@@ -28,6 +30,7 @@
     "help": "المساعدة والدعم",
     "profile": "الملف الشخصي",
     "settings": "الإعدادات",
+    "settingsDesc": "تكوين التطبيق والتفضيلات",
     "logout": "تسجيل الخروج"
   },
   "dashboard": {
@@ -143,7 +146,9 @@
     "dataCopied": "تم نسخ البيانات بنجاح من",
     "noDataToCopy": "لم يتم العثور على بيانات في الربع المحدد",
     "saveChanges": "حفظ التغييرات",
+    "saveDraft": "مسودة",
     "generateReport": "إنشاء تقرير",
+    "unsubmit": "إلغاء الإرسال",
     "duplicate": "تكرار",
     "actions": "الإجراءات",
     "selected": "محدد",
@@ -235,6 +240,13 @@
     "cancel": "إلغاء",
     "save": "حفظ",
     "create": "إنشاء",
+    "update": "تحديث",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "saving": "جاري الحفظ...",
+    "deleting": "جاري الحذف...",
     "saveChanges": "حفظ التغييرات",
     "selectOption": "اختر خياراً",
     "selectCurrency": "اختر العملة...",
@@ -245,7 +257,122 @@
     "enter": "أدخل",
     "user": "المستخدم",
     "futureStartsHere": "المستقبل يبدأ هنا",
-    "lastUpdate": "آخر تحديث"
+    "lastUpdate": "آخر تحديث",
+    "comingSoon": "قريباً",
+    "comingSoonDetails": "ستكون هذه الميزة متاحة قريباً. ترقبوا التحديثات!",
+    "sessionRefreshed": "تم تحديث الجلسة",
+    "pleaseRetryAction": "يرجى المحاولة مرة أخرى.",
+    "never": "أبداً",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "errorLoading": "خطأ في تحميل البيانات"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "subtitle": "إدارة تكوين التطبيق وتفضيلاتك",
+    "manageAccess": "إدارة الوصول",
+    "manageCompanies": "إدارة الشركات",
+    "manageEntities": "إدارة الكيانات",
+    "manageDeadlines": "إدارة المواعيد النهائية",
+    "users": {
+      "title": "إدارة المستخدمين",
+      "description": "التحكم في حسابات المستخدمين والأدوار والصلاحيات",
+      "totalUsers": "إجمالي المستخدمين",
+      "activeUsers": "المستخدمين النشطين"
+    },
+    "companies": {
+      "title": "إدارة الشركات",
+      "description": "إدارة ملفات الشركات والبيانات التنظيمية",
+      "totalCompanies": "إجمالي الشركات",
+      "activeCompanies": "الشركات النشطة"
+    },
+    "entities": {
+      "title": "إدارة الكيانات",
+      "description": "تكوين الكيانات التجارية والشركات التابعة",
+      "totalEntities": "إجمالي الكيانات",
+      "subsidiaries": "الشركات التابعة"
+    },
+    "deadlines": {
+      "title": "المواعيد النهائية للفترات",
+      "description": "تحديد وإدارة مواعيد التقارير النهائية",
+      "nextQuarter": "الربع التالي",
+      "daysLeft": "الأيام المتبقية"
+    },
+    "info": {
+      "title": "مركز الإدارة",
+      "description": "توفر كل بطاقة الوصول إلى أدوات إدارة شاملة للتحكم في جوانب مختلفة من نظامك. انقر على أي بطاقة للوصول إلى خيارات التكوين التفصيلية."
+    }
+  },
+  "entities": {
+    "title": "إدارة الكيانات",
+    "subtitle": "إدارة الكيانات التجارية والشركات التابعة في مؤسستك",
+    "searchPlaceholder": "البحث في الكيانات بالاسم أو رقم السجل التجاري أو البلد...",
+    "addEntity": "إضافة كيان",
+    "entitiesList": "قائمة الكيانات",
+    "noEntities": "لا توجد كيانات",
+    "noEntitiesMessage": "لا توجد كيانات تطابق معايير البحث الحالية. جرب تعديل المرشحات أو إنشاء كيان جديد.",
+    "fetchError": "فشل في تحميل الكيانات. يرجى المحاولة مرة أخرى.",
+    "stats": {
+      "totalEntities": "إجمالي الكيانات",
+      "activeEntities": "نشطة",
+      "inactiveEntities": "غير نشطة",
+      "subsidiaries": "الشركات التابعة"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "table": {
+      "entity": "الكيان",
+      "arabicName": "الاسم العربي",
+      "crNumber": "رقم السجل التجاري",
+      "moiNumber": "رقم وزارة الاستثمار",
+      "country": "البلد",
+      "status": "الحالة",
+      "created": "تاريخ الإنشاء",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "edit": "تعديل الكيان",
+      "delete": "حذف الكيان"
+    },
+    "modal": {
+      "addEntity": "إضافة كيان جديد",
+      "editEntity": "تعديل الكيان"
+    },
+    "form": {
+      "name": "اسم الكيان",
+      "namePlaceholder": "أدخل اسم الكيان",
+      "arabicName": "الاسم العربي",
+      "arabicNamePlaceholder": "أدخل اسم الكيان بالعربية",
+      "crNumber": "رقم السجل التجاري",
+      "crNumberPlaceholder": "أدخل رقم السجل التجاري",
+      "moiNumber": "رقم وزارة الاستثمار",
+      "moiNumberPlaceholder": "أدخل رقم وزارة الاستثمار",
+      "country": "بلد التأسيس",
+      "countryPlaceholder": "أدخل بلد التأسيس",
+      "isActive": "الحالة النشطة"
+    },
+    "validation": {
+      "required": "هذا الحقل مطلوب",
+      "maxLength": "يجب ألا يزيد عن {max} حرف"
+    },
+    "messages": {
+      "created": "تم إنشاء الكيان",
+      "entityCreatedSuccess": "تم إنشاء الكيان بنجاح",
+      "updated": "تم تحديث الكيان",
+      "entityUpdatedSuccess": "تم تحديث الكيان بنجاح",
+      "deleted": "تم حذف الكيان",
+      "entityDeletedSuccess": "تم حذف الكيان بنجاح",
+      "saveError": "فشل في حفظ الكيان. يرجى المحاولة مرة أخرى.",
+      "deleteError": "فشل في حذف الكيان. يرجى المحاولة مرة أخرى."
+    },
+    "deleteModal": {
+      "title": "حذف الكيان",
+      "message": "هل أنت متأكد من حذف {name}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "confirm": "حذف",
+      "cancel": "إلغاء"
+    }
   },
   "validation": {
     "required": "هذا الحقل مطلوب",
@@ -292,5 +419,87 @@
     "markAsRead": "تم القراءة",
     "clearAll": "مسح الكل",
     "noNotifications": "لا توجد إشعارات"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "subtitle": "إدارة معلوماتك الشخصية وإعدادات الحساب",
+    "userInfo": {
+      "title": "معلومات المستخدم",
+      "description": "تفاصيلك الشخصية ومعلومات الحساب",
+      "fullName": "الاسم الكامل",
+      "username": "اسم المستخدم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "memberSince": "عضو منذ",
+      "lastLogin": "آخر تسجيل دخول"
+    },
+    "companyInfo": {
+      "title": "معلومات الشركة",
+      "description": "تفاصيل حول الشركة المرتبطة بك",
+      "name": "اسم الشركة",
+      "arabicName": "الاسم العربي",
+      "crNumber": "رقم السجل التجاري",
+      "moiNumber": "رقم وزارة الاستثمار",
+      "country": "بلد التأسيس",
+      "status": "الحالة"
+    },
+    "changePassword": {
+      "title": "تغيير كلمة المرور",
+      "description": "تحديث كلمة مرور حسابك للأمان",
+      "currentPassword": "كلمة المرور الحالية",
+      "currentPasswordPlaceholder": "أدخل كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "newPasswordPlaceholder": "أدخل كلمة المرور الجديدة (12 حرف على الأقل)",
+      "confirmPassword": "تأكيد كلمة المرور الجديدة",
+      "confirmPasswordPlaceholder": "أكد كلمة المرور الجديدة",
+      "submit": "تغيير كلمة المرور",
+      "success": {
+        "title": "تم تغيير كلمة المرور",
+        "message": "تم تحديث كلمة المرور الخاصة بك بنجاح"
+      },
+      "error": {
+        "title": "فشل في تغيير كلمة المرور",
+        "message": "تعذر تغيير كلمة المرور. يرجى التحقق من كلمة المرور الحالية والمحاولة مرة أخرى."
+      }
+    },
+    "error": {
+      "title": "خطأ في الملف الشخصي",
+      "fetchFailed": "تعذر تحميل معلومات الملف الشخصي. يرجى تحديث الصفحة."
+    },
+    "info": {
+      "title": "معلومات الملف الشخصي",
+      "description": "يتم مزامنة معلومات ملفك الشخصي مع نظام شركتك. اتصل بالمسؤول إذا كنت بحاجة إلى تحديث أي تفاصيل الشركة."
+    }
+  },
+  "periodDeadlines": {
+    "title": "إدارة مواعيد الفترات",
+    "subtitle": "تحديد وإدارة مواعيد التقارير لفترات العمل المختلفة",
+    "createNew": "إنشاء موعد جديد",
+    "createFirst": "إنشاء أول موعد",
+    "createDeadline": "إنشاء موعد فترة",
+    "editDeadline": "تعديل موعد الفترة",
+    "noDeadlines": "لا توجد مواعيد فترات",
+    "noDeadlinesMessage": "لم يتم تكوين أي مواعيد فترات بعد. أنشئ موعدك الأول للبدء.",
+    "totalDeadlines": "إجمالي المواعيد",
+    "upcoming": "القادمة",
+    "past": "السابقة",
+    "expired": "منتهية الصلاحية",
+    "urgent": "عاجلة",
+    "future": "مستقبلية",
+    "lessThanHour": "< ساعة واحدة",
+    "year": "السنة",
+    "timePeriod": "الفترة الزمنية",
+    "deadline": "الموعد النهائي",
+    "timeRemaining": "الوقت المتبقي",
+    "filterByYear": "تصفية حسب السنة",
+    "filterByPeriod": "تصفية حسب الفترة",
+    "periods": {
+      "firstHalf": "النصف الأول",
+      "thirdQuarter": "الربع الثالث",
+      "fourthQuarter": "الربع الرابع"
+    },
+    "success": "نجح",
+    "createdSuccessfully": "تم إنشاء موعد الفترة بنجاح",
+    "updatedSuccessfully": "تم تحديث موعد الفترة بنجاح"
   }
 }

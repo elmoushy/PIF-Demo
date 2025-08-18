@@ -1,5 +1,5 @@
 <template>
-  <div :class="styles.authCard">
+  <div :class="styles.authCard" dir="ltr">
     <!-- Main Card Content -->
     <div :class="styles.cardContent">
       <!-- Left Column - Form -->
@@ -30,6 +30,149 @@
         </div>
 
         <form :class="styles.authForm" @submit.prevent="handleSubmit">
+          <!-- Company Information (Registration Only) -->
+          <div v-if="!isLogin" style="margin: 24px 0 16px 0;">
+            <h3 style="color: #E8EDF2; font-size: 16px; font-weight: 700; margin: 0; padding-bottom: 8px; border-bottom: 1px solid rgba(31, 38, 43, 0.5);">Company Information</h3>
+          </div>
+
+          <div v-if="!isLogin" :class="styles.inputGroup">
+            <label for="companyName" :class="styles.label">
+              <span :class="styles.labelIcon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 21H21V7L12 2L3 7V21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 21V12H15V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              Company Name *
+            </label>
+            <div :class="styles.inputWrapper">
+              <input
+                id="companyName"
+                v-model="formData.companyName"
+                type="text"
+                :class="[styles.input, formErrors.companyName ? styles.inputError : '']"
+                autocomplete="organization"
+                placeholder="Enter company name"
+                @blur="validateField('companyName')"
+                required
+              />
+              <div :class="styles.inputFocus"></div>
+            </div>
+            <div v-if="formErrors.companyName" :class="styles.errorMessage">
+              {{ formErrors.companyName }}
+            </div>
+          </div>
+
+          <div v-if="!isLogin" :class="styles.inputGroup">
+            <label for="companyArabicName" :class="styles.label">
+              <span :class="styles.labelIcon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 21H21V7L12 2L3 7V21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 21V12H15V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              Arabic Company Name
+            </label>
+            <div :class="styles.inputWrapper">
+              <input
+                id="companyArabicName"
+                v-model="formData.companyArabicName"
+                type="text"
+                :class="[styles.input, formErrors.companyArabicName ? styles.inputError : '']"
+                placeholder="Enter Arabic company name (optional)"
+                @blur="validateField('companyArabicName')"
+              />
+              <div :class="styles.inputFocus"></div>
+            </div>
+            <div v-if="formErrors.companyArabicName" :class="styles.errorMessage">
+              {{ formErrors.companyArabicName }}
+            </div>
+          </div>
+
+          <div v-if="!isLogin" :class="styles.inputGroup">
+            <label for="crNumber" :class="styles.label">
+              <span :class="styles.labelIcon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              CR Number
+            </label>
+            <div :class="styles.inputWrapper">
+              <input
+                id="crNumber"
+                v-model="formData.crNumber"
+                type="text"
+                :class="[styles.input, formErrors.crNumber ? styles.inputError : '']"
+                placeholder="Commercial Registration Number (optional)"
+                @blur="validateField('crNumber')"
+              />
+              <div :class="styles.inputFocus"></div>
+            </div>
+            <div v-if="formErrors.crNumber" :class="styles.errorMessage">
+              {{ formErrors.crNumber }}
+            </div>
+          </div>
+
+          <div v-if="!isLogin" :class="styles.inputGroup">
+            <label for="moiNumber" :class="styles.label">
+              <span :class="styles.labelIcon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              MOI Number
+            </label>
+            <div :class="styles.inputWrapper">
+              <input
+                id="moiNumber"
+                v-model="formData.moiNumber"
+                type="text"
+                :class="[styles.input, formErrors.moiNumber ? styles.inputError : '']"
+                placeholder="Ministry of Investment Number (optional)"
+                @blur="validateField('moiNumber')"
+              />
+              <div :class="styles.inputFocus"></div>
+            </div>
+            <div v-if="formErrors.moiNumber" :class="styles.errorMessage">
+              {{ formErrors.moiNumber }}
+            </div>
+          </div>
+
+          <div v-if="!isLogin" :class="styles.inputGroup">
+            <label for="countryOfIncorporation" :class="styles.label">
+              <span :class="styles.labelIcon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M2 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22C9.49872 19.2616 8.07725 15.708 8 12C8.07725 8.29203 9.49872 4.73835 12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              Country of Incorporation
+            </label>
+            <div :class="styles.inputWrapper">
+              <input
+                id="countryOfIncorporation"
+                v-model="formData.countryOfIncorporation"
+                type="text"
+                :class="[styles.input, formErrors.countryOfIncorporation ? styles.inputError : '']"
+                placeholder="Country of incorporation (optional)"
+                @blur="validateField('countryOfIncorporation')"
+              />
+              <div :class="styles.inputFocus"></div>
+            </div>
+            <div v-if="formErrors.countryOfIncorporation" :class="styles.errorMessage">
+              {{ formErrors.countryOfIncorporation }}
+            </div>
+          </div>
+
+          <!-- User Information -->
+          <div v-if="!isLogin" style="margin: 24px 0 16px 0;">
+            <h3 style="color: #E8EDF2; font-size: 16px; font-weight: 700; margin: 0; padding-bottom: 8px; border-bottom: 1px solid rgba(31, 38, 43, 0.5);">Administrator Account</h3>
+          </div>
+
           <!-- Enhanced Input Groups -->
           <div v-if="!isLogin" :class="styles.inputGroup">
             <label :for="usernameId" :class="styles.label">
@@ -76,7 +219,7 @@
                 :type="isLogin ? 'text' : 'email'"
                 :class="[styles.input, styles.fixedDimensionInput, formErrors.email ? styles.inputError : '']"
                 :autocomplete="isLogin ? 'off' : 'email'"
-                :placeholder="isLogin ? 'Demo: PIF_SubmitIQ' : 'Enter your email address'"
+                :placeholder="isLogin ? 'Enter username or email' : 'Enter your email address'"
                 @blur="validateField('email')"
                 readonly
                 onfocus="this.removeAttribute('readonly')"
@@ -162,7 +305,7 @@
                 :type="showPassword ? 'text' : 'password'"
                 :class="[styles.input, styles.passwordInput, styles.fixedDimensionInput, formErrors.password ? styles.inputError : '']"
                 :autocomplete="isLogin ? 'off' : 'new-password'"
-                :placeholder="isLogin ? 'Demo: PIF_SubmitIQ123' : 'Enter your password'"
+                :placeholder="'Enter your password'"
                 @blur="validateField('password')"
                 readonly
                 onfocus="this.removeAttribute('readonly')"
@@ -382,6 +525,13 @@ const isSubmitting = ref(false)
 
 // Form data
 const formData = ref({
+  // Company fields (for registration)
+  companyName: '',
+  companyArabicName: '',
+  crNumber: '',
+  moiNumber: '',
+  countryOfIncorporation: '',
+  // User fields
   username: '',
   email: '',
   firstName: '',
@@ -393,6 +543,11 @@ const formData = ref({
 
 // Form validation
 const formErrors = reactive({
+  companyName: '',
+  companyArabicName: '',
+  crNumber: '',
+  moiNumber: '',
+  countryOfIncorporation: '',
   username: '',
   email: '',
   firstName: '',
@@ -404,6 +559,58 @@ const formErrors = reactive({
 // Validation functions
 const validateField = (fieldName: string) => {
   switch (fieldName) {
+    case 'companyName':
+      if (!isLogin) {
+        if (!formData.value.companyName.trim()) {
+          formErrors.companyName = 'Company name is required'
+        } else if (formData.value.companyName.trim().length > 100) {
+          formErrors.companyName = 'Company name must be less than 100 characters'
+        } else {
+          formErrors.companyName = ''
+        }
+      }
+      break
+
+    case 'companyArabicName':
+      if (!isLogin) {
+        if (formData.value.companyArabicName && formData.value.companyArabicName.trim().length > 100) {
+          formErrors.companyArabicName = 'Arabic company name must be less than 100 characters'
+        } else {
+          formErrors.companyArabicName = ''
+        }
+      }
+      break
+
+    case 'crNumber':
+      if (!isLogin) {
+        if (formData.value.crNumber && formData.value.crNumber.trim().length > 50) {
+          formErrors.crNumber = 'CR number must be less than 50 characters'
+        } else {
+          formErrors.crNumber = ''
+        }
+      }
+      break
+
+    case 'moiNumber':
+      if (!isLogin) {
+        if (formData.value.moiNumber && formData.value.moiNumber.trim().length > 50) {
+          formErrors.moiNumber = 'MOI number must be less than 50 characters'
+        } else {
+          formErrors.moiNumber = ''
+        }
+      }
+      break
+
+    case 'countryOfIncorporation':
+      if (!isLogin) {
+        if (formData.value.countryOfIncorporation && formData.value.countryOfIncorporation.trim().length > 100) {
+          formErrors.countryOfIncorporation = 'Country of incorporation must be less than 100 characters'
+        } else {
+          formErrors.countryOfIncorporation = ''
+        }
+      }
+      break
+
     case 'username':
       if (!isLogin) {
         if (!formData.value.username.trim()) {
@@ -503,6 +710,14 @@ const validateForm = (): boolean => {
     validateField('password')
     return !formErrors.email && !formErrors.password
   } else {
+    // Validate company fields
+    validateField('companyName')
+    validateField('companyArabicName')
+    validateField('crNumber')
+    validateField('moiNumber')
+    validateField('countryOfIncorporation')
+    
+    // Validate user fields
     validateField('username')
     validateField('email')
     validateField('firstName')
@@ -510,7 +725,12 @@ const validateForm = (): boolean => {
     validateField('password')
     validateField('confirmPassword')
     
-    return !formErrors.username && 
+    return !formErrors.companyName && 
+           !formErrors.companyArabicName && 
+           !formErrors.crNumber && 
+           !formErrors.moiNumber && 
+           !formErrors.countryOfIncorporation &&
+           !formErrors.username && 
            !formErrors.email && 
            !formErrors.firstName && 
            !formErrors.lastName && 
@@ -558,6 +778,13 @@ const handleSubmit = async () => {
       }
     } else {
       submitData = {
+        // Company information
+        name: formData.value.companyName,
+        arabic_name: formData.value.companyArabicName || undefined,
+        cr_number: formData.value.crNumber || undefined,
+        moi_number: formData.value.moiNumber || undefined,
+        country_of_incorporation: formData.value.countryOfIncorporation || undefined,
+        // User information
         username: formData.value.username,
         email: formData.value.email,
         password: formData.value.password,

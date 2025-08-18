@@ -1,7 +1,8 @@
 /**
- * Data Service for managing localStorage persistence
- * Simulates a backend database for the demo application
+ * Data Service for managing localStorage persistence and API integration
+ * Handles both local data storage and real API data fetching
  */
+import investmentService from './investmentService'
 
 export interface BusinessQuarterRow {
   id: string
@@ -39,10 +40,13 @@ export interface BusinessQuarterRow {
   isNewRow?: boolean
   isFromPreviousQuarter?: boolean // Flag to indicate data loaded from previous quarter
   previousQuarterSource?: string // Source quarter name
-  dataSource?: string // Data source ('admin' or 'company')
+  dataSource?: string // Data source ('admin', 'company', or 'api')
   isRowReadOnly?: boolean // Flag to indicate if row is read-only
   createdAt?: string
   updatedAt?: string
+  isSubmitted?: boolean
+  submittedAt?: string
+  submittedBy?: number
 }
 
 export interface QuarterData {
@@ -292,6 +296,229 @@ class DataService {
     localStorage.removeItem(this.USER_SAVE_STATUS_KEY)
     console.log('Save status cleared from localStorage')
   }
+
+  // ================== API INTEGRATION METHODS ==================
+
+  /**
+   * Load investment data from API for a specific period
+   */
+  async loadApiDataForPeriod(period: string): Promise<{
+    data: BusinessQuarterRow[]
+    isFromPreviousQuarter: boolean
+    previousQuarterSource?: string
+  }> {
+    try {
+      const { year, timePeriod } = investmentService.parsePeriodString(period)
+      return await investmentService.getInvestmentDataWithFallback(year, timePeriod)
+    } catch (error) {
+      console.error('Error loading API data for period:', period, error)
+      throw error
+    }
+  }
+
+  /**
+   * Load investment data from API with localStorage fallback
+   * This method combines API data with local modifications
+   */
+  async loadPeriodDataWithApi(username: string, period: string): Promise<{
+    data: BusinessQuarterRow[]
+    isFromPreviousQuarter: boolean
+    previousQuarterSource?: string
+  }> {
+    try {
+      console.log(`Loading API data for ${username}, period: ${period}`)
+      
+      // Try to load data from API first
+      const apiResult = await this.loadApiDataForPeriod(period)
+      
+      if (apiResult.data.length > 0) {
+        // API data found - check if user has local modifications
+        const localData = this.loadUserPeriodData(username, period)
+        
+        if (localData.length > 0) {
+          // Merge API data with local modifications
+          console.log('Merging API data with local modifications')
+          const mergedData = this.mergeApiWithLocalData(apiResult.data, localData)
+          
+          return {
+            data: mergedData,
+            isFromPreviousQuarter: apiResult.isFromPreviousQuarter,
+            previousQuarterSource: apiResult.previousQuarterSource
+          }
+        } else {
+          // No local modifications, use API data as-is
+          console.log('Using API data without local modifications')
+          return apiResult
+        }
+      } else {
+        // No API data found - fall back to localStorage
+        console.log('No API data found, falling back to localStorage')
+        const localResult = this.loadUserPeriodDataWithFallback(username, period)
+        return {
+          data: localResult.data,
+          isFromPreviousQuarter: localResult.isFromPreviousQuarter,
+          previousQuarterSource: localResult.previousQuarterSource
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadPeriodDataWithApi:', error)
+      
+      // If API fails, fall back to localStorage
+      console.log('API error, falling back to localStorage')
+      const localResult = this.loadUserPeriodDataWithFallback(username, period)
+      return {
+        data: localResult.data,
+        isFromPreviousQuarter: localResult.isFromPreviousQuarter,
+        previousQuarterSource: localResult.previousQuarterSource
+      }
+    }
+  }
+
+  /**
+   * Merge API data with local modifications
+   * API data takes precedence, but local modifications (new rows, edits) are preserved
+   */
+  private mergeApiWithLocalData(apiData: BusinessQuarterRow[], localData: BusinessQuarterRow[]): BusinessQuarterRow[] {
+    const mergedData: BusinessQuarterRow[] = []
+    
+    // Start with API data
+    const apiDataMap = new Map(apiData.map(row => [row.id, row]))
+    
+    // Add all API data first
+    mergedData.push(...apiData)
+    
+    // Process local data
+    localData.forEach(localRow => {
+      if (localRow.isNewRow || !apiDataMap.has(localRow.id)) {
+        // This is a new row created locally, add it
+        mergedData.push({
+          ...localRow,
+          dataSource: 'local'
+        })
+      } else if (localRow.isModified) {
+        // This row exists in API but has local modifications
+        const apiRowIndex = mergedData.findIndex(row => row.id === localRow.id)
+        if (apiRowIndex !== -1) {
+          mergedData[apiRowIndex] = {
+            ...mergedData[apiRowIndex], // Start with API data
+            ...localRow, // Apply local modifications
+            dataSource: 'api-modified'
+          }
+        }
+      }
+    })
+    
+    return mergedData
+  }
+
+  /**
+   * Save investment data as draft to API
+   */
+  async saveDraftToApi(username: string, period: string, data: BusinessQuarterRow[]): Promise<void> {
+    try {
+      const { year, timePeriod } = investmentService.parsePeriodString(period)
+      
+      // Filter out rows that shouldn't be saved (read-only, empty, etc.)
+      const validData = data.filter(row => 
+        !row.isRowReadOnly && 
+        row.entityNameEnglish && 
+        row.entityNameEnglish.trim() !== ''
+      )
+      
+      if (validData.length === 0) {
+        throw new Error('No valid data to save as draft')
+      }
+      
+      console.log(`Saving ${validData.length} rows as draft for ${username}, period: ${period}`)
+      
+      // Save to API
+      await investmentService.saveInvestmentsDraft(year, timePeriod, validData)
+      
+      // Also save to localStorage as backup
+      this.saveUserPeriodData(username, period, data)
+      
+      console.log('Draft saved successfully to API and localStorage')
+    } catch (error) {
+      console.error('Error saving draft to API:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Submit investment data for approval via API
+   */
+  async submitInvestmentsToApi(username: string, period: string, data: BusinessQuarterRow[]): Promise<{ detail: string; submitted_count: number }> {
+    try {
+      const { year, timePeriod } = investmentService.parsePeriodString(period)
+      
+      // Filter out rows that shouldn't be submitted (read-only, empty, etc.)
+      const validData = data.filter(row => 
+        !row.isRowReadOnly && 
+        row.entityNameEnglish && 
+        row.entityNameEnglish.trim() !== ''
+      )
+      
+      if (validData.length === 0) {
+        throw new Error('No valid data to submit')
+      }
+      
+      console.log(`Submitting ${validData.length} rows for ${username}, period: ${period}`)
+      
+      // First save as draft to ensure data is in the system
+      await investmentService.saveInvestmentsDraft(year, timePeriod, validData)
+      
+      // Then submit for approval
+      const result = await investmentService.submitInvestmentsByPeriod(year, timePeriod)
+      
+      // Save to localStorage and mark as submitted
+      const submittedData = data.map(row => ({
+        ...row,
+        isSubmitted: true,
+        isRowReadOnly: true // Submitted data becomes read-only
+      }))
+      this.saveUserPeriodData(username, period, submittedData)
+      
+      console.log('Investments submitted successfully to API')
+      return result
+    } catch (error) {
+      console.error('Error submitting investments to API:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Unsubmit investments to enable modifications (POST /api/investment/unsubmit/)
+   * Reverses submission status and makes data editable again
+   */
+  async unsubmitInvestmentsFromApi(username: string, period: string): Promise<{ detail: string }> {
+    try {
+      const { year, timePeriod } = investmentService.parsePeriodString(period)
+      
+      console.log(`Unsubmitting investments for ${username}, period: ${period}`)
+      
+      // Call API to unsubmit investments for the period
+      const result = await investmentService.unsubmitInvestmentsByPeriod(year, timePeriod)
+      
+      // Update localStorage - remove submission status and make data editable
+      const currentData = this.loadUserPeriodData(username, period)
+      const unsubmittedData = currentData.map(row => ({
+        ...row,
+        isSubmitted: false,
+        isRowReadOnly: false, // Make data editable again
+        submittedAt: undefined,
+        submittedBy: undefined
+      }))
+      this.saveUserPeriodData(username, period, unsubmittedData)
+      
+      console.log('Investments unsubmitted successfully from API')
+      return result
+    } catch (error) {
+      console.error('Error unsubmitting investments from API:', error)
+      throw error
+    }
+  }
+
+  // ============================================================
 
   /**
    * Create backup of current data

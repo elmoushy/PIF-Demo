@@ -1,14 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import enTranslations from '../i18n/en.json'
-import arTranslations from '../i18n/ar.json'
+// import arTranslations from '../i18n/ar.json'
 
-type Language = 'en' | 'ar'
+type Language = 'en' // | 'ar'
 type Theme = 'night' | 'light'
 
 const translations = {
-  en: enTranslations,
-  ar: arTranslations
+  en: enTranslations
+  // ar: arTranslations
 }
 
 export const useAppStore = defineStore('app', () => {
@@ -21,7 +21,7 @@ export const useAppStore = defineStore('app', () => {
     if (typeof window !== 'undefined') {
       // Initialize language - check both old and new keys for backward compatibility
       const savedLanguage = localStorage.getItem('pif-language') || localStorage.getItem('language')
-      if (savedLanguage && ['en', 'ar'].includes(savedLanguage)) {
+      if (savedLanguage && ['en'].includes(savedLanguage)) {
         currentLanguage.value = savedLanguage as Language
       }
 
@@ -37,7 +37,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // Getters
-  const isRTL = computed(() => currentLanguage.value === 'ar')
+  const isRTL = computed(() => false) // currentLanguage.value === 'ar'
   const isNightMode = computed(() => currentTheme.value === 'night')
   const isLightMode = computed(() => currentTheme.value === 'light')
 
@@ -54,7 +54,8 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const toggleLanguage = () => {
-    currentLanguage.value = currentLanguage.value === 'en' ? 'ar' : 'en'
+    // currentLanguage.value = currentLanguage.value === 'en' ? 'ar' : 'en'
+    currentLanguage.value = 'en' // Always set to English
     localStorage.setItem('pif-language', currentLanguage.value)
     updateDocumentAttributes()
   }
@@ -81,15 +82,15 @@ export const useAppStore = defineStore('app', () => {
     if (typeof window !== 'undefined') {
       const html = document.documentElement
       html.setAttribute('lang', currentLanguage.value)
-      html.setAttribute('dir', currentLanguage.value === 'ar' ? 'rtl' : 'ltr')
+      html.setAttribute('dir', 'ltr') // currentLanguage.value === 'ar' ? 'rtl' : 'ltr'
       html.setAttribute('data-theme', currentTheme.value)
       
       // Update font family based on language
-      if (currentLanguage.value === 'ar') {
-        html.style.fontFamily = '"Tajawal", sans-serif'
-      } else {
+      // if (currentLanguage.value === 'ar') {
+      //   html.style.fontFamily = '"Tajawal", sans-serif'
+      // } else {
         html.style.fontFamily = '"Inter", sans-serif'
-      }
+      // }
     }
   }
 

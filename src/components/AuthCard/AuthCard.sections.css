@@ -1,0 +1,32 @@
+/* Additional styles for section headers in AuthCard */
+.sectionHeader {
+  margin: 24px 0 16px 0;
+}
+
+.sectionHeader h3 {
+  /* text-night-high */
+  color: #E8EDF2;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(31, 38, 43, 0.5);
+  position: relative;
+}
+
+.sectionHeader h3::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 40px;
+  height: 1px;
+  /* accent-neon */
+  background: #00FFC2;
+}
+
+[data-theme="light"] .sectionHeader h3 {
+  /* text-light-high */
+  color: #0A1A2A;
+  border-bottom-color: rgba(206, 212, 218, 0.5);
+}

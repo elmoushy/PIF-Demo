@@ -42,7 +42,7 @@
 
         <!-- Regular Actions (shown when no items are selected) -->
         <div v-else :class="styles.regularActions">
-          <button 
+          <!-- <button 
             @click="$emit('createInForm')"
             :class="styles.addButton"
             :disabled="props.readOnly"
@@ -51,9 +51,9 @@
             <span :class="styles.buttonIcon">📝</span>
             {{ t('businessQuarters.createInForm') }}
             <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
-          </button>
+          </button> -->
 
-          <button 
+          <!-- <button 
             @click="$emit('copyFromAnotherQuarter')"
             :class="styles.copyQuarterButton"
             :disabled="props.readOnly"
@@ -62,7 +62,7 @@
             <span :class="styles.buttonIcon">📋</span>
             {{ t('businessQuarters.copyFromAnotherQuarter') }}
             <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
-          </button>
+          </button> -->
 
           <button 
             @click="$emit('addRow')"
@@ -87,9 +87,20 @@
           </button>
           
           <button 
+            @click="$emit('saveDraft')"
+            :class="[styles.draftButton, canSaveDraft && !props.readOnly ? styles.active : '']"
+            :disabled="!canSaveDraft || props.readOnly"
+            :title="getDisabledDraftTitle()"
+          >
+            <span :class="styles.buttonIcon">📋</span>
+            {{ t('businessQuarters.saveDraft') }}
+            <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
+          </button>
+          
+          <button 
             @click="$emit('saveChanges')"
-            :class="[styles.saveButton, canSave && !props.readOnly ? styles.active : '']"
-            :disabled="!canSave || props.readOnly"
+            :class="[styles.saveButton, canSaveChanges && !props.readOnly ? styles.active : '']"
+            :disabled="!canSaveChanges || props.readOnly"
             :title="getDisabledSaveTitle()"
           >
             <span :class="styles.buttonIcon">💾</span>
@@ -97,6 +108,19 @@
             <span v-if="hasValidationErrors" :class="styles.errorBadge">{{ validationErrorCount }}</span>
             <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
           </button>
+
+          <button 
+            @click="$emit('unsubmit')"
+            :class="[styles.unsubmitButton, hasSubmittedData && !props.readOnly ? styles.active : '']"
+            :disabled="!hasSubmittedData || props.readOnly"
+            :title="getDisabledUnsubmitTitle()"
+          >
+            <span :class="styles.buttonIcon">↩️</span>
+            {{ t('businessQuarters.unsubmit') }}
+            <span v-if="props.readOnly" :class="styles.lockBadge">🔒</span>
+          </button>
+
+          <!-- button of Unsubmit -->
         </div>
       </div>
       
@@ -478,7 +502,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   addRow: []
+  saveDraft: []
   saveChanges: []
+  unsubmit: []
   generateReport: []
   createInForm: []
   copyFromAnotherQuarter: []
@@ -512,10 +538,6 @@ const startX = ref(0)
 const startWidth = ref(0)
 const tableRef = ref<HTMLTableElement>()
 
-const hasChanges = computed(() => {
-  return props.data.some(row => row.isModified)
-})
-
 // Validation state computed properties
 const hasValidationErrors = computed(() => {
   return Object.values(fieldErrors.value).some(rowErrors => 
@@ -531,10 +553,25 @@ const validationErrorCount = computed(() => {
   return count
 })
 
-const canSave = computed(() => {
-  // Can save if there are changes and no validation errors
-  // OR if data was loaded from previous quarter (allows saving without manual changes)
-  return (hasChanges.value || props.hasDataFromPreviousQuarter) && !hasValidationErrors.value
+const hasSubmittedData = computed(() => {
+  console.log('DataTable hasSubmittedData check:', props.data.map(row => ({ 
+    id: row.id, 
+    isSubmitted: row.isSubmitted, 
+    is_submitted: row.is_submitted, 
+    type_isSubmitted: typeof row.isSubmitted,
+    type_is_submitted: typeof row.is_submitted
+  })))
+  return props.data.some(row => row.isSubmitted === true || row.isSubmitted === "true")
+})
+
+// Save Draft: Always enabled (no conditions)
+const canSaveDraft = computed(() => {
+  return true
+})
+
+// Save Changes: Only enabled if there's at least one row with is_submitted: false
+const canSaveChanges = computed(() => {
+  return props.data.some(row => row.is_submitted === false)
 })
 
 // Multi-select computed properties
@@ -926,21 +963,34 @@ const isFieldValid = (row: TableRow, fieldKey: string) => {
   return !fieldErrors.value[row.id]?.[fieldKey]
 }
 
-// Get tooltip text for disabled save button
+// Get tooltip text for disabled save/submit button
 const getDisabledSaveTitle = () => {
   if (props.readOnly) {
-    return 'Cannot save: This quarter is locked because future quarters have been saved'
+    return 'Cannot submit: This quarter is locked because future quarters have been submitted'
   }
-  if (!canSave.value && hasValidationErrors.value) {
-    return `Cannot save: ${validationErrorCount.value} validation error(s)`
+  if (!canSaveChanges.value) {
+    return 'Cannot submit: No unsubmitted data available'
   }
-  if (props.hasDataFromPreviousQuarter && !hasChanges.value) {
-    return 'Save loaded previous quarter data'
+  return 'Submit for approval (final submission)'
+}
+
+// Get tooltip text for disabled draft button
+const getDisabledDraftTitle = () => {
+  if (props.readOnly) {
+    return 'Cannot save draft: This quarter is locked because future quarters have been saved'
   }
-  if (!hasChanges.value && !props.hasDataFromPreviousQuarter) {
-    return 'No changes to save'
+  return 'Save as draft (always available, no validation required)'
+}
+
+// Get tooltip text for disabled unsubmit button
+const getDisabledUnsubmitTitle = () => {
+  if (props.readOnly) {
+    return 'Cannot unsubmit: This quarter is locked because future quarters have been saved'
   }
-  return 'Save changes'
+  if (!hasSubmittedData.value) {
+    return 'No submitted data to unsubmit'
+  }
+  return 'Unsubmit investments for this period'
 }
 
 // Load saved column widths from localStorage
@@ -1045,46 +1095,12 @@ const buildRowCells = (row: TableRow): BuiltCell[] => {
 };
 const selectionColspan = (row: TableRow) => (row as any).__mergeIntoSelection ? 2 : 1;
 
-// Watch for validation state changes and emit to parent
+// Watch for validation state changes and emit to parent (simplified)
 watch([hasValidationErrors, validationErrorCount], ([hasErrors, errorCount]) => {
   emit('validationChange', hasErrors, errorCount)
 }, { immediate: true })
 
-// Debug watcher to monitor data changes
-watch(() => props.data, (newData, oldData) => {
-  console.log('=== DEBUG: DataTable received data ===')
-  console.log('Number of rows:', newData.length)
-  if (newData.length > 0) {
-    console.log('First row:', newData[0])
-    console.log('Country field in first row:', newData[0].countryOfIncorporation)
-    console.log('Available fields:', Object.keys(newData[0]))
-  }
-  
-  // Check for new rows and validate them immediately
-  if (oldData && newData.length > oldData.length) {
-    // Find newly added rows
-    const newRows = newData.filter(newRow => 
-      !oldData.some(oldRow => oldRow.id === newRow.id)
-    )
-    
-    // Validate each new row
-    newRows.forEach(row => {
-      if (row.isNewRow) {
-        // Initialize field errors for the new row
-        if (!fieldErrors.value[row.id]) {
-          fieldErrors.value[row.id] = {}
-        }
-        
-        // Validate all required fields and special validation rules
-        props.columns.forEach(column => {
-          validateField(row, column.key)
-        })
-      }
-    })
-  }
-  
-  console.log('=== END DEBUG ===')
-}, { immediate: true })
+// Removed heavy debug watcher for better performance
 
 onMounted(() => {
   loadColumnWidths()

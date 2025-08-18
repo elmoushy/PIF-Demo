@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/useAuthStore'
 import { useAppStore } from './stores/useAppStore'
+import sessionManager from './services/sessionManager'
 import './styles/reset.module.css'
 // Removed RTL styles import to fix layout issues in production build
 // import './styles/rtl-utils.css'
@@ -28,6 +29,10 @@ app.use(router)
 // Initialize authentication and app settings on startup
 const authStore = useAuthStore()
 const appStore = useAppStore()
+
+// Initialize session management
+sessionManager.init()
+
 authStore.initAuth()
 // Ensure theme and language are applied to document
 appStore.updateDocumentAttributes()

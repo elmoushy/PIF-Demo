@@ -1,0 +1,307 @@
+{
+  "auth_endpoints": {
+    "/api/auth/login/": {
+      "method": "POST",
+      "description": "User login endpoint that returns JWT tokens upon successful authentication",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "body": {
+          "username_or_email": "string (max 150 chars) - Username or email address",
+          "password": "string - User password"
+        },
+        "example_body": {
+          "username_or_email": "admin@company.com",
+          "password": "securepassword123"
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Login successful",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "tokens": {
+              "refresh": "string - JWT refresh token",
+              "access": "string - JWT access token"
+            }
+          },
+          "example_body": {
+            "tokens": {
+              "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5NzI4MDAwMCwidXNlcl9pZCI6MX0.example_refresh_token",
+              "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjk3MjgwMDAwLCJ1c2VyX2lkIjoxfQ.example_access_token"
+            }
+          }
+        },
+        "400": {
+          "description": "Validation errors",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "username_or_email": ["array of error messages"],
+            "password": ["array of error messages"],
+            "non_field_errors": ["array of validation errors"]
+          },
+          "example_body": {
+            "non_field_errors": ["Invalid credentials."]
+          }
+        },
+        "401": {
+          "description": "Unauthorized - Invalid credentials",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "detail": "string - Error message"
+          },
+          "example_body": {
+            "detail": "Invalid credentials."
+          }
+        }
+      }
+    },
+    "/api/auth/token/refresh/": {
+      "method": "POST",
+      "description": "Refresh JWT access token using refresh token",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "body": {
+          "refresh": "string - JWT refresh token"
+        },
+        "example_body": {
+          "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5NzI4MDAwMCwidXNlcl9pZCI6MX0.example_refresh_token"
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Token refresh successful",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "tokens": {
+              "access": "string - New JWT access token",
+              "refresh": "string - Original refresh token"
+            }
+          },
+          "example_body": {
+            "tokens": {
+              "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjk3MjgwMDAwLCJ1c2VyX2lkIjoxfQ.new_access_token",
+              "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5NzI4MDAwMCwidXNlcl9pZCI6MX0.example_refresh_token"
+            }
+          }
+        },
+        "401": {
+          "description": "Token expired or invalid",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "detail": "string - Error message",
+            "code": "string - Error code"
+          },
+          "example_body": {
+            "detail": "Token is invalid or expired",
+            "code": "token_not_valid"
+          }
+        },
+        "400": {
+          "description": "Bad request - Missing or invalid refresh token",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "refresh": ["array of error messages"]
+          },
+          "example_body": {
+            "refresh": ["This field is required."]
+          }
+        }
+      }
+    },
+    "/api/auth/logout/": {
+      "method": "POST",
+      "description": "Logout user by blacklisting the refresh token",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer {access_token} - Required JWT access token"
+        },
+        "body": {
+          "refresh": "string - JWT refresh token to blacklist"
+        },
+        "example_body": {
+          "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5NzI4MDAwMCwidXNlcl9pZCI6MX0.example_refresh_token"
+        }
+      },
+      "responses": {
+        "205": {
+          "description": "Logout successful - Reset Content",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "detail": "string - Success message"
+          },
+          "example_body": {
+            "detail": "Logout successful"
+          }
+        },
+        "400": {
+          "description": "Invalid token or missing refresh token",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "detail": "string - Error message"
+          },
+          "example_body": {
+            "detail": "Invalid token"
+          }
+        },
+        "401": {
+          "description": "Unauthorized - Missing or invalid access token",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "detail": "string - Error message"
+          },
+          "example_body": {
+            "detail": "Authentication credentials were not provided."
+          }
+        }
+      }
+    },
+    "/api/auth/register/": {
+      "method": "POST",
+      "description": "Register a new company with admin user and return JWT tokens",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "body": {
+          "name": "string (max 100 chars) - Company name (required)",
+          "arabic_name": "string (max 100 chars) - Arabic company name (optional)",
+          "cr_number": "string (max 50 chars) - Commercial registration number (optional)",
+          "moi_number": "string (max 50 chars) - MOI number (optional)",
+          "country_of_incorporation": "string (max 100 chars) - Country of incorporation (optional)",
+          "username": "string (3-30 chars) - Admin username (required)",
+          "email": "string - Admin email address (required)",
+          "password": "string (min 12 chars) - Admin password (required)",
+          "password_confirm": "string - Password confirmation (required)",
+          "first_name": "string (max 30 chars) - Admin first name (required)",
+          "last_name": "string (max 30 chars) - Admin last name (required)"
+        },
+        "example_body": {
+          "name": "Acme Corporation",
+          "arabic_name": "شركة أكمي",
+          "cr_number": "1234567890",
+          "moi_number": "MOI123456",
+          "country_of_incorporation": "Saudi Arabia",
+          "username": "admin_user",
+          "email": "admin@acmecorp.com",
+          "password": "SecurePassword123!",
+          "password_confirm": "SecurePassword123!",
+          "first_name": "John",
+          "last_name": "Doe"
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Company and admin user created successfully",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "tokens": {
+              "refresh": "string - JWT refresh token",
+              "access": "string - JWT access token"
+            }
+          },
+          "example_body": {
+            "tokens": {
+              "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY5NzI4MDAwMCwidXNlcl9pZCI6MX0.example_refresh_token",
+              "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjk3MjgwMDAwLCJ1c2VyX2lkIjoxfQ.example_access_token"
+            }
+          }
+        },
+        "400": {
+          "description": "Validation errors",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "name": ["array of error messages"],
+            "username": ["array of error messages"],
+            "email": ["array of error messages"],
+            "password": ["array of error messages"],
+            "password_confirm": ["array of error messages"],
+            "first_name": ["array of error messages"],
+            "last_name": ["array of error messages"],
+            "non_field_errors": ["array of validation errors"]
+          },
+          "example_body": {
+            "name": ["A company with this name already exists."],
+            "username": ["A user with that username already exists."],
+            "email": ["User with this email already exists."],
+            "password": ["Password must be at least 12 characters long."],
+            "non_field_errors": ["Passwords do not match."]
+          }
+        }
+      }
+    }
+  },
+  "common_error_responses": {
+    "500": {
+      "description": "Internal Server Error",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "detail": "string - Error message"
+      },
+      "example_body": {
+        "detail": "Internal server error occurred."
+      }
+    }
+  },
+  "authentication_notes": {
+    "jwt_tokens": {
+      "access_token": {
+        "purpose": "Used for authenticating API requests",
+        "expiration": "Short-lived (typically 5-15 minutes)",
+        "usage": "Include in Authorization header as 'Bearer {access_token}'"
+      },
+      "refresh_token": {
+        "purpose": "Used to obtain new access tokens",
+        "expiration": "Long-lived (typically 7-30 days)",
+        "usage": "Send to /api/auth/token/refresh/ to get new access token"
+      }
+    },
+    "security_considerations": {
+      "brute_force_protection": "Generic error messages prevent username enumeration",
+      "password_requirements": "Minimum 12 characters for registration",
+      "token_blacklisting": "Refresh tokens are blacklisted on logout",
+      "user_account_status": "Inactive users cannot login"
+    },
+    "headers": {
+      "required_for_authenticated_endpoints": {
+        "Authorization": "Bearer {access_token}",
+        "Content-Type": "application/json"
+      },
+      "optional_but_recommended": {
+        "Accept": "application/json"
+      }
+    }
+  }
+}

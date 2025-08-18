@@ -77,8 +77,6 @@
 /* Simplified Button Styles */
 .addButton,
 .saveButton,
-.draftButton,
-.unsubmitButton,
 .reportButton,
 .deleteButton,
 .bulkDuplicateButton,
@@ -131,41 +129,6 @@
   background: linear-gradient(135deg, #CBA760, #B8964A);
   color: white;
   border-color: #CBA760;
-}
-
-.draftButton {
-  background: rgba(156, 163, 175, 0.15);
-  color: #6B7280;
-  border: 1px solid rgba(156, 163, 175, 0.30);
-}
-
-[data-theme="light"] .draftButton {
-  background: rgba(156, 163, 175, 0.10);
-  border: 1px solid rgba(156, 163, 175, 0.25);
-}
-
-.draftButton:hover:not(:disabled) {
-  background: rgba(156, 163, 175, 0.25);
-  color: #4B5563;
-}
-
-.unsubmitButton {
-  background: linear-gradient(135deg, #F97316, #EA580C);
-  color: white;
-}
-
-[data-theme="light"] .unsubmitButton {
-  background: linear-gradient(135deg, #EA580C, #DC2626);
-}
-
-.unsubmitButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #EA580C, #DC2626);
-  transform: translateY(-1px);
-}
-
-.unsubmitButton.active {
-  background: linear-gradient(135deg, #F97316, #EA580C);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
 }
 
 .reportButton {
@@ -479,7 +442,6 @@
   
   .addButton,
   .saveButton,
-  .draftButton,
   .reportButton,
   .deleteButton,
   .bulkDuplicateButton,
